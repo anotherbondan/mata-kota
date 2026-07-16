@@ -1,4 +1,6 @@
 import { ChevronRight, Clock, Lightbulb, MapPin } from "lucide-react";
+import { CompositionChart, TrendChart } from "./dashboard-charts";
+import DashboardMapPreview from "./map-preview";
 
 export default function DashboardPage() {
 	return (
@@ -10,7 +12,7 @@ export default function DashboardPage() {
 					{ label: "Selesai Hari Ini", value: "20" },
 					{ label: "Personel Bertugas", value: "20" },
 					{ label: "Personel Tersedia", value: "20" },
-				].map((stat, i) => (
+				].map((stat) => (
 					<div
 						className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm flex flex-col justify-center gap-2"
 						key={stat.label}
@@ -29,11 +31,7 @@ export default function DashboardPage() {
 					<h2 className="text-lg font-bold text-primary-500">Peta Insiden</h2>
 					<ChevronRight className="h-5 w-5 text-secondary-500" />
 				</div>
-				<div className="h-[300px] w-full rounded-2xl bg-gray-300 flex items-center justify-center">
-					<p className="font-bold text-gray-800 text-lg">
-						ini peta ada heatmapsnya
-					</p>
-				</div>
+				<DashboardMapPreview />
 			</section>
 
 			{/* Recent Incidents Section */}
@@ -126,11 +124,7 @@ export default function DashboardPage() {
 						<ChevronRight className="h-5 w-5 text-secondary-500" />
 					</div>
 					<div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm min-h-[300px] flex items-center justify-center">
-						<div className="w-full h-[250px] bg-gray-50 flex items-center justify-center border border-dashed border-gray-200 rounded">
-							<p className="text-gray-400 font-medium text-sm">
-								Bar Chart Placeholder
-							</p>
-						</div>
+						<TrendChart />
 					</div>
 				</div>
 
@@ -143,11 +137,7 @@ export default function DashboardPage() {
 						<ChevronRight className="h-5 w-5 text-secondary-500" />
 					</div>
 					<div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm min-h-[300px] flex items-center justify-center">
-						<div className="w-full h-[250px] bg-gray-50 flex items-center justify-center border border-dashed border-gray-200 rounded">
-							<p className="text-gray-400 font-medium text-sm">
-								Pie Chart Placeholder
-							</p>
-						</div>
+						<CompositionChart />
 					</div>
 				</div>
 			</section>

@@ -33,10 +33,11 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-hook-form": "^7.67.0",
-    "sonner": "catalog:",
+    "recharts": "^3.9.2",
     "socket.io-client": "^4.8.1",
-    "zustand": "^5.0.8",
-    "zod": "catalog:"
+    "sonner": "catalog:",
+    "zod": "catalog:",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@mata-kota/config": "workspace:*",
