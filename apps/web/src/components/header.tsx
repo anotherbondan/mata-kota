@@ -17,6 +17,11 @@ export default function Header() {
 				: "border-transparent text-[#94a3b8] hover:text-slate-600"
 		}`;
 
+	// Hide the global header completely on the login page
+	if (pathname === "/login") {
+		return null;
+	}
+
 	if (pathname === "/maps") {
 		return (
 			<div className="fixed top-6 left-6 z-50 flex flex-col items-start">
