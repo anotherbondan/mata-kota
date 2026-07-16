@@ -51,7 +51,7 @@ export default function MapPageContent() {
 
 	return (
 		<main className="mx-auto grid w-full max-w-[1600px] gap-4 p-4 lg:h-[calc(100vh-4rem)] lg:grid-cols-[minmax(0,1fr)_360px] lg:overflow-hidden">
-			<section className="flex min-h-[620px] min-w-0 flex-col border border-slate-200 bg-white lg:min-h-0">
+			<section className="flex min-h-155 rounded-lg min-w-0 flex-col border border-slate-200 bg-white lg:min-h-0">
 				<div className="flex flex-col gap-3 border-slate-200 border-b p-3 sm:flex-row sm:items-center">
 					<div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
 						<Filter className="size-4" /> Filter Peta
@@ -59,7 +59,7 @@ export default function MapPageContent() {
 					<div className="grid flex-1 grid-cols-1 gap-2 sm:grid-cols-3">
 						<select
 							aria-label="Filter kategori"
-							className="h-9 border border-slate-300 bg-white px-3 text-sm"
+							className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none transition-colors focus:border-primary-500 focus:ring-1 focus:ring-primary-500/20"
 							onChange={(event) => setCategory(event.target.value)}
 							value={category}
 						>
@@ -72,7 +72,7 @@ export default function MapPageContent() {
 						</select>
 						<select
 							aria-label="Filter tingkat keparahan"
-							className="h-9 border border-slate-300 bg-white px-3 text-sm"
+							className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none transition-colors focus:border-primary-500 focus:ring-1 focus:ring-primary-500/20"
 							onChange={(event) => setSeverity(event.target.value)}
 							value={severity}
 						>
@@ -84,7 +84,7 @@ export default function MapPageContent() {
 						</select>
 						<select
 							aria-label="Filter waktu"
-							className="h-9 border border-slate-300 bg-white px-3 text-sm"
+							className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none transition-colors focus:border-primary-500 focus:ring-1 focus:ring-primary-500/20"
 							onChange={(event) => setTimeRange(event.target.value)}
 							value={timeRange}
 						>
@@ -98,51 +98,53 @@ export default function MapPageContent() {
 					</span>
 				</div>
 				<IncidentMap
-					className="min-h-[540px] flex-1 lg:min-h-0"
+					className="min-h-[540px] flex-1 lg:min-h-0 rounded-b-lg"
 					incidents={filteredIncidents}
 					onSelectIncident={setSelectedIncidentId}
 					units={devices.data ?? []}
 				/>
 			</section>
 
-			<aside className="min-h-0 border border-slate-200 bg-white lg:flex lg:flex-col">
+			<aside className="min-h-0 border rounded-lg border-slate-200 bg-white lg:flex lg:flex-col overflow-hidden">
 				<div className="border-slate-200 border-b p-4">
 					<h1 className="font-semibold text-slate-900">Insiden Terbaru</h1>
 					<p className="mt-1 text-xs text-slate-500">
 						Diperbarui setiap 10 detik
 					</p>
 				</div>
-				<div className="divide-y divide-slate-200 lg:flex-1 lg:overflow-y-auto">
+				<div className="divide-y divide-slate-100 lg:flex-1 lg:overflow-y-auto">
 					{latest.isLoading ? (
 						<p className="p-4 text-sm text-slate-500">Memuat insiden...</p>
 					) : null}
 					{latest.data?.items.map((incident) => (
 						<button
-							className="block w-full p-4 text-left hover:bg-slate-50"
+							className="block w-full p-4 text-left transition-colors hover:bg-slate-50"
 							key={incident.id}
 							onClick={() => setSelectedIncidentId(incident.id)}
 							type="button"
 						>
 							<div className="flex items-start justify-between gap-3">
-								<p className="text-sm font-semibold text-slate-900">
+								<p className="text-sm font-bold text-slate-900">
 									{categoryLabels[incident.category] ?? incident.category}
 								</p>
 								<span
-									className={`px-2 py-1 text-[10px] font-semibold ${severityStyles[incident.severity]}`}
+									className={`rounded-full px-2 py-1 text-[10px] font-bold tracking-wider ${severityStyles[incident.severity]}`}
 								>
 									{severityLabels[incident.severity]}
 								</span>
 							</div>
-							<div className="mt-3 space-y-1 text-xs text-slate-500">
+							<div className="mt-3 flex flex-col gap-1.5 text-xs text-slate-500">
 								<p className="flex items-center gap-2">
-									<Clock className="size-3.5" />
+									<Clock className="size-3.5 text-slate-400" />
 									{formatIncidentTime(incident.createdAt)}
 								</p>
 								<p className="flex items-center gap-2">
-									<MapPin className="size-3.5" />
+									<MapPin className="size-3.5 text-slate-400" />
 									{incident.lat.toFixed(4)}, {incident.lng.toFixed(4)}
 								</p>
-								<p>{statusLabels[incident.status] ?? incident.status}</p>
+								<p className="mt-1 inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600 self-start">
+									{statusLabels[incident.status] ?? incident.status}
+								</p>
 							</div>
 						</button>
 					))}

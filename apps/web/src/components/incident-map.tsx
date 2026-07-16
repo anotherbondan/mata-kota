@@ -468,9 +468,9 @@ export default function IncidentMap({
 						</h3>
 						<div className="h-3 w-full bg-gradient-to-r from-yellow-400 via-orange-500 to-red-700" />
 						<div className="mt-1 flex justify-between text-[10px] font-medium text-slate-600">
-							<span>0 Rendah</span>
+							<span>0 (Rendah)</span>
 							<span>50</span>
-							<span>100 Tinggi</span>
+							<span>100 (Tinggi)</span>
 						</div>
 					</>
 				) : (
