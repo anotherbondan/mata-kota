@@ -4,7 +4,8 @@ import { createClient } from "redis";
 const REDIS_RETRY_DELAY_MS = 30_000;
 
 function reportRedisError(error: unknown) {
-	console.warn("Redis cache unavailable; using database fallback", error);
+	const message = error instanceof Error ? error.message : String(error);
+	console.warn(`Redis cache unavailable; using database fallback (${message})`);
 }
 
 function createRedisClient() {

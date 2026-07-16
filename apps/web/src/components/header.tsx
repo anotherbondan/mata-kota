@@ -11,7 +11,9 @@ import UserMenu from "./user-menu";
 const navigation = [
 	{ href: "/dashboard", label: "Dasbor" },
 	{ href: "/maps", label: "Peta Insiden" },
+	{ href: "/reports", label: "Laporan" },
 	{ href: "/history", label: "Riwayat Insiden" },
+	{ href: "/personnel", label: "Personel" },
 ] as const;
 
 export default function Header() {

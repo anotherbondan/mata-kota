@@ -31,27 +31,7 @@ interface IncidentMapProps {
 
 const EMPTY_UNITS: UnitMapItem[] = [];
 const JAKARTA_CENTER: [number, number] = [106.8272, -6.1751];
-const OPEN_STREET_MAP_STYLE: mapboxgl.StyleSpecification = {
-	layers: [
-		{
-			id: "open-street-map",
-			source: "open-street-map",
-			type: "raster",
-		},
-	],
-	glyphs: "mapbox://fonts/mapbox/{fontstack}/{range}.pbf",
-	sources: {
-		"open-street-map": {
-			attribution:
-				'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-			maxzoom: 19,
-			tileSize: 256,
-			tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-			type: "raster",
-		},
-	},
-	version: 8,
-};
+const MAPBOX_STYLE = "mapbox://styles/mapbox/light-v11";
 
 function generatedHeatmapScore(id: string) {
 	let hash = 0;
@@ -131,6 +111,9 @@ export default function IncidentMap({
 	onSelectRef.current = onSelectIncident;
 	unitsRef.current = units;
 
+	// Use process.env directly with a hardcoded fallback to prevent Next.js bundler cache issues
+	const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || "pk.eyJ1IjoiYW5vdGhlcmJvbmRhbiIsImEiOiJjbXJueDZ5aHgzYmVyMnhwZHV4ajAzbHhmIn0.IiHFvbPiWKwgNyz8enM77w";
+
 	// Calculate counts for legend
 	const criticalCount = incidents.filter(
 		(i) => i.severity === "CRITICAL"
@@ -141,14 +124,16 @@ export default function IncidentMap({
 
 	useEffect(() => {
 		const container = containerRef.current;
-		if (!container || mapRef.current) {
+		if (!container || mapRef.current || !MAPBOX_TOKEN) {
 			return;
 		}
+
+		mapboxgl.accessToken = MAPBOX_TOKEN;
 
 		const map = new mapboxgl.Map({
 			center: JAKARTA_CENTER,
 			container,
-			style: OPEN_STREET_MAP_STYLE,
+			style: MAPBOX_STYLE,
 			zoom: 10.5,
 		});
 		mapRef.current = map;
@@ -415,6 +400,12 @@ export default function IncidentMap({
 			role="region"
 		>
 			<div className="absolute inset-0" ref={containerRef} />
+			
+			{!MAPBOX_TOKEN ? (
+				<div className="absolute inset-0 z-50 grid place-items-center bg-white/80 px-6 text-center text-sm font-semibold text-slate-800">
+					Token Mapbox tidak ditemukan atau tidak valid. Silakan periksa file .env Anda.
+				</div>
+			) : null}
 
 			{/* Mode Switcher Overlay (Bottom Left) */}
 			<div className="absolute bottom-4 left-4 z-10 flex flex-col items-start gap-2">

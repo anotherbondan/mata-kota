@@ -1,7 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, Clock, MapPin } from "lucide-react";
+import { ChevronRight, Clock, MapPin, Plus } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 
 import IncidentDetailModal from "@/components/incident-detail-modal";
@@ -17,6 +18,7 @@ import {
 import { trpc } from "@/utils/trpc";
 
 import { CompositionChart, TrendChart } from "./dashboard-charts";
+import CreateIncidentDialog from "./create-incident-dialog";
 
 const POLLING_INTERVAL = 10_000;
 
@@ -25,6 +27,7 @@ export default function DashboardPage() {
 	const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(
 		null
 	);
+	const [isCreateOpen, setIsCreateOpen] = useState(false);
 	const overview = useQuery({
 		...trpc.dashboard.overview.queryOptions(),
 		refetchInterval: POLLING_INTERVAL,
@@ -43,6 +46,10 @@ export default function DashboardPage() {
 	});
 	const trend = useQuery(trpc.dashboard.trend.queryOptions({ days: 7 }));
 	const composition = useQuery(trpc.dashboard.reportComposition.queryOptions());
+	const assignments = useQuery({
+		...trpc.assignments.list.queryOptions({ limit: 5 }),
+		refetchInterval: POLLING_INTERVAL,
+	});
 
 	const stats = [
 		{
@@ -69,16 +76,26 @@ export default function DashboardPage() {
 
 	return (
 		<div className="space-y-8">
-			<div>
-				<h1 className="text-2xl font-semibold text-slate-900">
-					Dasbor Operasional
-				</h1>
-				<p className="mt-1 text-sm text-slate-500">
-					Situasi insiden dan kesiapan personel terkini.
-				</p>
+			<div className="flex items-end justify-between">
+				<div>
+					<h1 className="text-2xl font-semibold text-slate-900">
+						Dasbor Operasional
+					</h1>
+					<p className="mt-1 text-sm text-slate-500">
+						Situasi insiden dan kesiapan personel terkini.
+					</p>
+				</div>
+				<button
+					className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-slate-800 to-slate-900 px-5 py-2.5 text-sm font-bold text-white shadow-lg hover:shadow-xl hover:from-slate-700 hover:to-slate-800 active:scale-[0.97] transition-all"
+					onClick={() => setIsCreateOpen(true)}
+					type="button"
+				>
+					<Plus className="size-4" />
+					Buat Insiden
+				</button>
 			</div>
 
-	<section
+			<section
 				aria-label="Ringkasan operasional"
 				className="grid grid-cols-2 gap-4 lg:grid-cols-4"
 			>
@@ -99,10 +116,13 @@ export default function DashboardPage() {
 
 			<section className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.7fr)]">
 				<div className="min-w-0 flex flex-col h-full">
-					<div className="mb-4 flex items-center gap-2 px-1">
+					<Link
+						className="group mb-4 flex w-fit items-center gap-2 px-1"
+						href="/maps"
+					>
 						<h2 className="font-bold text-slate-800 text-lg">Peta Insiden</h2>
-						<ChevronRight className="size-4 text-amber-500" />
-					</div>
+						<ChevronRight className="size-4 text-amber-500 transition-transform group-hover:translate-x-0.5" />
+					</Link>
 					<div className="flex-1 rounded-3xl border border-slate-100/60 bg-white p-2 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
 						<IncidentMap
 							className="h-full min-h-[420px] rounded-2xl"
@@ -114,10 +134,15 @@ export default function DashboardPage() {
 				</div>
 
 				<div className="min-w-0 flex flex-col h-full">
-					<div className="mb-4 flex items-center gap-2 px-1">
-						<h2 className="font-bold text-slate-800 text-lg">Insiden Terbaru</h2>
-						<ChevronRight className="size-4 text-amber-500" />
-					</div>
+					<Link
+						className="group mb-4 flex w-fit items-center gap-2 px-1"
+						href="/history"
+					>
+						<h2 className="font-bold text-slate-800 text-lg">
+							Insiden Terbaru
+						</h2>
+						<ChevronRight className="size-4 text-amber-500 transition-transform group-hover:translate-x-0.5" />
+					</Link>
 					<div className="flex-1 max-h-[440px] divide-y divide-slate-100 overflow-y-auto rounded-3xl border border-slate-100/60 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
 						{incidents.isLoading ? (
 							<p className="p-5 text-sm text-slate-500">Memuat insiden...</p>
@@ -162,7 +187,9 @@ export default function DashboardPage() {
 			<section className="grid gap-6 lg:grid-cols-2 pb-12">
 				<div className="rounded-3xl border border-slate-100/60 bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all duration-300">
 					<div className="mb-6 flex items-center gap-2">
-						<h2 className="font-bold text-slate-800 text-lg">Tren Insiden 7 Hari</h2>
+						<h2 className="font-bold text-slate-800 text-lg">
+							Tren Insiden 7 Hari
+						</h2>
 					</div>
 					<div className="h-[300px]">
 						<TrendChart data={trend.data ?? []} />
@@ -170,7 +197,9 @@ export default function DashboardPage() {
 				</div>
 				<div className="rounded-3xl border border-slate-100/60 bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all duration-300">
 					<div className="mb-6 flex items-center gap-2">
-						<h2 className="font-bold text-slate-800 text-lg">Komposisi Laporan</h2>
+						<h2 className="font-bold text-slate-800 text-lg">
+							Komposisi Laporan
+						</h2>
 					</div>
 					<div className="h-[300px]">
 						<CompositionChart
@@ -183,9 +212,70 @@ export default function DashboardPage() {
 				</div>
 			</section>
 
+			<section className="rounded-3xl border border-slate-100/60 bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-12">
+				<div className="mb-6 flex items-center gap-2">
+					<h2 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+						Penugasan Personel
+						<ChevronRight className="size-5 text-amber-500" />
+					</h2>
+				</div>
+				<div className="overflow-x-auto">
+					<table className="w-full text-left text-sm">
+						<thead className="bg-[#1B3654] text-white">
+							<tr>
+								<th className="px-4 py-3 font-medium rounded-tl-xl">ID Insiden</th>
+								<th className="px-4 py-3 font-medium">Personel</th>
+								<th className="px-4 py-3 font-medium">Tingkat Risiko</th>
+								<th className="px-4 py-3 font-medium">Status</th>
+								<th className="px-4 py-3 font-medium rounded-tr-xl">Waktu Respon</th>
+							</tr>
+						</thead>
+						<tbody className="divide-y divide-slate-100">
+							{assignments.isLoading ? (
+								<tr>
+									<td colSpan={5} className="p-4 text-center text-slate-500">Memuat penugasan...</td>
+								</tr>
+							) : null}
+							{(assignments.data?.items ?? []).map((assignment: any) => {
+								let responseTime = "-";
+								const end = assignment.resolvedAt || assignment.onSceneAt;
+								if (end) {
+									const diffMs = new Date(end).getTime() - new Date(assignment.assignedAt).getTime();
+									responseTime = `${Math.max(1, Math.round(diffMs / 60000))} menit`;
+								}
+								
+								return (
+									<tr key={assignment.id} className="hover:bg-slate-50 transition-colors">
+										<td className="px-4 py-4 text-slate-600 font-mono text-xs uppercase">{assignment.incident.id.split("-").pop() || assignment.incident.id}</td>
+										<td className="px-4 py-4 text-slate-600">{assignment.personnel.name}</td>
+										<td className={`px-4 py-4 ${severityStyles[assignment.incident.severity]?.split(" ")[1] ?? "text-slate-600"}`}>
+											{severityLabels[assignment.incident.severity] ?? assignment.incident.severity}
+										</td>
+										<td className="px-4 py-4 text-slate-600">
+											{assignment.resolvedAt ? "Sudah Ditangani" : statusLabels[assignment.incident.status] ?? "Ditugaskan"}
+										</td>
+										<td className="px-4 py-4 text-slate-600">{responseTime}</td>
+									</tr>
+								);
+							})}
+							{!assignments.isLoading && (assignments.data?.items?.length ?? 0) === 0 ? (
+								<tr>
+									<td colSpan={5} className="p-4 text-center text-slate-500">Belum ada penugasan</td>
+								</tr>
+							) : null}
+						</tbody>
+					</table>
+				</div>
+			</section>
+
 			<IncidentDetailModal
 				incidentId={selectedIncidentId}
 				onClose={() => setSelectedIncidentId(null)}
+			/>
+			
+			<CreateIncidentDialog 
+				isOpen={isCreateOpen}
+				onClose={() => setIsCreateOpen(false)}
 			/>
 		</div>
 	);
