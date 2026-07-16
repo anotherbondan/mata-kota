@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
-import { Poppins } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 
 import "../index.css";
 import Header from "@/components/header";
 import Providers from "@/components/providers";
 
-const poppins = Poppins({
+const plusJakartaSans = Plus_Jakarta_Sans({
 	subsets: ["latin"],
-	variable: "--font-poppins",
-	weight: ["400", "500", "600", "700"],
+	variable: "--font-sans",
+	weight: ["400", "500", "600", "700", "800"],
 });
 
 export const metadata: Metadata = {
@@ -23,11 +23,16 @@ export default function RootLayout({
 }>) {
 	return (
 		<html lang="id" suppressHydrationWarning>
-			<body className={`${poppins.variable} antialiased`}>
+			<body className={`${plusJakartaSans.variable} font-sans antialiased text-slate-800 bg-[#f8fafc] selection:bg-primary-500/20 selection:text-primary-900`}>
 				<Providers>
-					<div className="min-h-svh bg-slate-50">
+					<div className="min-h-svh flex flex-col relative">
+						{/* Subtle global background gradient */}
+						<div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-50/50 via-white to-white -z-10" />
+						
 						<Header />
-						{children}
+						<main className="flex-1">
+							{children}
+						</main>
 					</div>
 				</Providers>
 			</body>

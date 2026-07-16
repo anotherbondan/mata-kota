@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { protectedProcedure, router, supervisorProcedure } from "../index";
 import { canTransitionIncident } from "../lib/incident-lifecycle";
+import { invalidateIncidentMapCache } from "../lib/redis-cache";
 import {
 	idSchema,
 	incidentCategorySchema,
@@ -67,8 +68,8 @@ export const incidentsRouter = router({
 				verificationStatus: verificationStatusSchema.default("UNVERIFIED"),
 			})
 		)
-		.mutation(({ ctx, input }) =>
-			ctx.db.incident.create({
+		.mutation(async ({ ctx, input }) => {
+			const incident = await ctx.db.incident.create({
 				data: {
 					...input,
 					statusLogs: {
@@ -79,8 +80,10 @@ export const incidentsRouter = router({
 					},
 				},
 				include: incidentDetailInclude,
-			})
-		),
+			});
+			await invalidateIncidentMapCache();
+			return incident;
+		}),
 	list: protectedProcedure
 		.input(
 			paginationSchema
@@ -135,8 +138,8 @@ export const incidentsRouter = router({
 				status: incidentStatusSchema,
 			})
 		)
-		.mutation(({ ctx, input }) =>
-			ctx.db.$transaction(async (transaction) => {
+		.mutation(async ({ ctx, input }) => {
+			const updated = await ctx.db.$transaction(async (transaction) => {
 				const incident = await transaction.incident.findUnique({
 					select: { id: true, status: true },
 					where: { id: input.id },
@@ -174,8 +177,10 @@ export const incidentsRouter = router({
 					include: incidentDetailInclude,
 					where: { id: incident.id },
 				});
-			})
-		),
+			});
+			await invalidateIncidentMapCache();
+			return updated;
+		}),
 	updateDetails: supervisorProcedure
 		.input(
 			z.object({
@@ -201,11 +206,13 @@ export const incidentsRouter = router({
 				});
 			}
 
-			return ctx.db.incident.update({
+			const updated = await ctx.db.incident.update({
 				data,
 				include: incidentDetailInclude,
 				where: { id },
 			});
+			await invalidateIncidentMapCache();
+			return updated;
 		}),
 	verify: protectedProcedure
 		.input(
@@ -215,8 +222,8 @@ export const incidentsRouter = router({
 				verificationStatus: verificationStatusSchema,
 			})
 		)
-		.mutation(({ ctx, input }) =>
-			ctx.db.$transaction(async (transaction) => {
+		.mutation(async ({ ctx, input }) => {
+			const updated = await ctx.db.$transaction(async (transaction) => {
 				const incident = await transaction.incident.findUnique({
 					select: { id: true, status: true },
 					where: { id: input.id },
@@ -254,6 +261,8 @@ export const incidentsRouter = router({
 					include: incidentDetailInclude,
 					where: { id: incident.id },
 				});
-			})
-		),
+			});
+			await invalidateIncidentMapCache();
+			return updated;
+		}),
 });

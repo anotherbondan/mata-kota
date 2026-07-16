@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { protectedProcedure, router, supervisorProcedure } from "../index";
+import { invalidateIncidentMapCache } from "../lib/redis-cache";
 import {
 	idSchema,
 	incidentCategorySchema,
@@ -45,8 +46,8 @@ export const reportsRouter = router({
 				severity: severitySchema.default("LOW"),
 			})
 		)
-		.mutation(({ ctx, input }) =>
-			ctx.db.$transaction(async (transaction) => {
+		.mutation(async ({ ctx, input }) => {
+			const incident = await ctx.db.$transaction(async (transaction) => {
 				const report = await transaction.report.findUnique({
 					where: { id: input.reportId },
 				});
@@ -103,8 +104,10 @@ export const reportsRouter = router({
 						statusLogs: true,
 					},
 				});
-			})
-		),
+			});
+			await invalidateIncidentMapCache();
+			return incident;
+		}),
 	create: protectedProcedure
 		.input(
 			z.object({
@@ -202,8 +205,8 @@ export const reportsRouter = router({
 
 			return { items, nextCursor: nextItem?.id ?? null };
 		}),
-	simulateFeed: protectedProcedure.mutation(({ ctx }) =>
-		ctx.db.$transaction(async (transaction) => {
+	simulateFeed: protectedProcedure.mutation(async ({ ctx }) => {
+		const result = await ctx.db.$transaction(async (transaction) => {
 			const minuteBucket = Math.floor(Date.now() / 60_000);
 			const reporterRef = `MOCK-FEED-${minuteBucket}`;
 			const existing = await transaction.report.findFirst({
@@ -285,6 +288,10 @@ export const reportsRouter = router({
 			});
 
 			return { created: true, incidentId: incident.id };
-		})
-	),
+		});
+		if (result.created) {
+			await invalidateIncidentMapCache();
+		}
+		return result;
+	}),
 });

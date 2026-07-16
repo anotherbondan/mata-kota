@@ -1,12 +1,12 @@
 "use client";
 
-import { env } from "@mata-kota/env/web";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useRef, useState } from "react";
 
 export interface IncidentMapItem {
 	category: string;
+	heatmapScore?: number;
 	id: string;
 	lat: number;
 	lng: number;
@@ -31,19 +31,41 @@ interface IncidentMapProps {
 
 const EMPTY_UNITS: UnitMapItem[] = [];
 const JAKARTA_CENTER: [number, number] = [106.8272, -6.1751];
-const MAPBOX_TOKEN = env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+const OPEN_STREET_MAP_STYLE: mapboxgl.StyleSpecification = {
+	layers: [
+		{
+			id: "open-street-map",
+			source: "open-street-map",
+			type: "raster",
+		},
+	],
+	glyphs: "mapbox://fonts/mapbox/{fontstack}/{range}.pbf",
+	sources: {
+		"open-street-map": {
+			attribution:
+				'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+			maxzoom: 19,
+			tileSize: 256,
+			tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+			type: "raster",
+		},
+	},
+	version: 8,
+};
 
-function severityWeight(severity: string) {
-	if (severity === "CRITICAL") {
-		return 4;
+function generatedHeatmapScore(id: string) {
+	let hash = 0;
+	for (let index = 0; index < id.length; index += 1) {
+		hash = (hash * 31 + id.charCodeAt(index)) % 2_147_483_647;
 	}
-	if (severity === "HIGH") {
-		return 3;
+	return hash % 101;
+}
+
+function heatmapScore(incident: IncidentMapItem) {
+	if (typeof incident.heatmapScore !== "number") {
+		return generatedHeatmapScore(incident.id);
 	}
-	if (severity === "MEDIUM") {
-		return 2;
-	}
-	return 1;
+	return Math.round(Math.min(100, Math.max(0, incident.heatmapScore)));
 }
 
 function incidentGeoJson(incidents: IncidentMapItem[]) {
@@ -55,10 +77,10 @@ function incidentGeoJson(incidents: IncidentMapItem[]) {
 			},
 			properties: {
 				category: incident.category,
+				heatmapScore: heatmapScore(incident),
 				id: incident.id,
 				severity: incident.severity,
 				status: incident.status,
-				weight: severityWeight(incident.severity),
 			},
 			type: "Feature" as const,
 		})),
@@ -102,22 +124,31 @@ export default function IncidentMap({
 	const onSelectRef = useRef(onSelectIncident);
 	const unitsRef = useRef(units);
 	const [isReady, setIsReady] = useState(false);
+	const [layerMode, setLayerMode] = useState<"heatmap" | "pin">("pin");
+	const [showModeSwitcher, setShowModeSwitcher] = useState(false);
 
 	incidentsRef.current = incidents;
 	onSelectRef.current = onSelectIncident;
 	unitsRef.current = units;
 
+	// Calculate counts for legend
+	const criticalCount = incidents.filter(
+		(i) => i.severity === "CRITICAL"
+	).length;
+	const highCount = incidents.filter((i) => i.severity === "HIGH").length;
+	const mediumCount = incidents.filter((i) => i.severity === "MEDIUM").length;
+	const lowCount = incidents.filter((i) => i.severity === "LOW").length;
+
 	useEffect(() => {
 		const container = containerRef.current;
-		if (!(container && MAPBOX_TOKEN) || mapRef.current) {
+		if (!container || mapRef.current) {
 			return;
 		}
 
-		mapboxgl.accessToken = MAPBOX_TOKEN;
 		const map = new mapboxgl.Map({
 			center: JAKARTA_CENTER,
 			container,
-			style: "mapbox://styles/mapbox/light-v11",
+			style: OPEN_STREET_MAP_STYLE,
 			zoom: 10.5,
 		});
 		mapRef.current = map;
@@ -127,41 +158,78 @@ export default function IncidentMap({
 		);
 
 		const handleLoad = () => {
+			const incidentData = incidentGeoJson(incidentsRef.current);
+
 			map.addSource("incidents", {
 				cluster: true,
 				clusterMaxZoom: 14,
 				clusterRadius: 52,
-				data: incidentGeoJson(incidentsRef.current),
+				data: incidentData,
 				type: "geojson",
 			});
+			map.addSource("incident-heat-source", {
+				data: incidentData,
+				type: "geojson",
+			});
+
 			map.addLayer({
-				filter: ["!", ["has", "point_count"]],
 				id: "incident-heat",
-				maxzoom: 13,
+				layout: { visibility: "none" },
+				maxzoom: 15,
 				paint: {
 					"heatmap-color": [
 						"interpolate",
 						["linear"],
 						["heatmap-density"],
 						0,
-						"rgba(34,197,94,0)",
-						0.35,
-						"rgba(250,204,21,0.55)",
-						0.7,
+						"rgba(250,204,21,0)",
+						0.12,
+						"rgba(250,204,21,0.58)",
+						0.45,
 						"rgba(249,115,22,0.72)",
+						0.72,
+						"rgba(239,68,68,0.82)",
 						1,
-						"rgba(220,38,38,0.86)",
+						"rgba(185,28,28,0.94)",
 					],
-					"heatmap-intensity": 0.9,
-					"heatmap-radius": 34,
-					"heatmap-weight": ["get", "weight"],
+					"heatmap-intensity": [
+						"interpolate",
+						["linear"],
+						["zoom"],
+						9,
+						0.8,
+						14,
+						1.6,
+					],
+					"heatmap-opacity": 0.9,
+					"heatmap-radius": [
+						"interpolate",
+						["linear"],
+						["zoom"],
+						9,
+						22,
+						14,
+						52,
+					],
+					"heatmap-weight": [
+						"interpolate",
+						["linear"],
+						["get", "heatmapScore"],
+						0,
+						0.12,
+						100,
+						1,
+					],
 				},
-				source: "incidents",
+				source: "incident-heat-source",
 				type: "heatmap",
 			});
+
+			// Cluster circles (Pin Mode)
 			map.addLayer({
 				filter: ["has", "point_count"],
 				id: "incident-clusters",
+				layout: { visibility: "visible" },
 				paint: {
 					"circle-color": "#1e293b",
 					"circle-radius": ["step", ["get", "point_count"], 18, 10, 24, 30, 30],
@@ -171,20 +239,26 @@ export default function IncidentMap({
 				source: "incidents",
 				type: "circle",
 			});
+
+			// Cluster text (Pin Mode)
 			map.addLayer({
 				filter: ["has", "point_count"],
 				id: "incident-cluster-count",
 				layout: {
-					"text-field": ["get", "point_count_abbreviated"],
+					"text-field": "{point_count_abbreviated}",
 					"text-size": 12,
+					visibility: "visible",
 				},
 				paint: { "text-color": "#ffffff" },
 				source: "incidents",
 				type: "symbol",
 			});
+
+			// Unclustered points (Pin Mode)
 			map.addLayer({
 				filter: ["!", ["has", "point_count"]],
 				id: "incident-points",
+				layout: { visibility: "visible" },
 				paint: {
 					"circle-color": [
 						"match",
@@ -204,10 +278,12 @@ export default function IncidentMap({
 				source: "incidents",
 				type: "circle",
 			});
+
 			map.addSource("units", {
 				data: unitGeoJson(unitsRef.current),
 				type: "geojson",
 			});
+
 			map.addLayer({
 				id: "patrol-units",
 				paint: {
@@ -276,6 +352,44 @@ export default function IncidentMap({
 		};
 	}, []);
 
+	// Sync Layer Visibility based on layerMode state
+	useEffect(() => {
+		if (!(mapRef.current && isReady)) {
+			return;
+		}
+		const map = mapRef.current;
+
+		const isHeatmap = layerMode === "heatmap";
+		if (map.getLayer("incident-heat")) {
+			map.setLayoutProperty(
+				"incident-heat",
+				"visibility",
+				isHeatmap ? "visible" : "none"
+			);
+		}
+		if (map.getLayer("incident-clusters")) {
+			map.setLayoutProperty(
+				"incident-clusters",
+				"visibility",
+				isHeatmap ? "none" : "visible"
+			);
+		}
+		if (map.getLayer("incident-cluster-count")) {
+			map.setLayoutProperty(
+				"incident-cluster-count",
+				"visibility",
+				isHeatmap ? "none" : "visible"
+			);
+		}
+		if (map.getLayer("incident-points")) {
+			map.setLayoutProperty(
+				"incident-points",
+				"visibility",
+				isHeatmap ? "none" : "visible"
+			);
+		}
+	}, [layerMode, isReady]);
+
 	useEffect(() => {
 		if (!isReady) {
 			return;
@@ -283,6 +397,11 @@ export default function IncidentMap({
 		const map = mapRef.current;
 		(
 			map?.getSource("incidents") as mapboxgl.GeoJSONSource | undefined
+		)?.setData(incidentGeoJson(incidents));
+		(
+			map?.getSource("incident-heat-source") as
+				| mapboxgl.GeoJSONSource
+				| undefined
 		)?.setData(incidentGeoJson(incidents));
 		(map?.getSource("units") as mapboxgl.GeoJSONSource | undefined)?.setData(
 			unitGeoJson(units)
@@ -296,21 +415,112 @@ export default function IncidentMap({
 			role="region"
 		>
 			<div className="absolute inset-0" ref={containerRef} />
-			{MAPBOX_TOKEN ? null : (
-				<div className="absolute inset-0 grid place-items-center px-6 text-center text-sm text-slate-600">
-					Tambahkan token Mapbox untuk menampilkan peta insiden.
-				</div>
-			)}
-			<div className="pointer-events-none absolute bottom-3 left-3 flex flex-wrap gap-3 bg-white/95 px-3 py-2 text-xs text-slate-600 shadow-sm">
-				<span className="flex items-center gap-1.5">
-					<span className="size-2.5 rounded-full bg-red-600" /> Insiden
-				</span>
-				<span className="flex items-center gap-1.5">
-					<span className="size-2.5 rounded-full bg-blue-600" /> Unit aktif
-				</span>
-				<span className="flex items-center gap-1.5">
-					<span className="size-2.5 rounded-full bg-slate-500" /> Lokasi stale
-				</span>
+
+			{/* Mode Switcher Overlay (Bottom Left) */}
+			<div className="absolute bottom-4 left-4 z-10 flex flex-col items-start gap-2">
+				{showModeSwitcher ? (
+					<div className="flex gap-2 animate-in slide-in-from-bottom-2 fade-in duration-200">
+						<button
+							className={`relative w-20 h-20 rounded-xl overflow-hidden shadow-lg border-2 transition-all ${layerMode === "heatmap" ? "border-amber-500 scale-105" : "border-white hover:border-amber-300"}`}
+							onClick={() => {
+								setLayerMode("heatmap");
+								setShowModeSwitcher(false);
+							}}
+							type="button"
+						>
+							<div className="absolute inset-0 bg-gradient-to-br from-yellow-400 via-orange-500 to-red-700 opacity-90" />
+							<span className="relative z-10 flex items-center justify-center h-full w-full bg-black/30 text-white text-[10px] font-bold text-center leading-tight">
+								Mode:
+								<br />
+								Heatmaps
+							</span>
+						</button>
+						<button
+							className={`relative w-20 h-20 rounded-xl overflow-hidden shadow-lg border-2 transition-all ${layerMode === "pin" ? "border-amber-500 scale-105" : "border-white hover:border-amber-300"}`}
+							onClick={() => {
+								setLayerMode("pin");
+								setShowModeSwitcher(false);
+							}}
+							type="button"
+						>
+							<div className="absolute inset-0 bg-slate-200" />
+							<div className="absolute inset-0 flex items-center justify-center">
+								<span className="w-4 h-4 bg-red-600 rounded-full border-2 border-white shadow-sm" />
+								<span className="w-4 h-4 bg-yellow-500 rounded-full border-2 border-white shadow-sm -ml-1" />
+							</div>
+							<span className="relative z-10 flex items-center justify-center h-full w-full bg-black/30 text-white text-[10px] font-bold text-center leading-tight">
+								Mode:
+								<br />
+								Pin Map
+							</span>
+						</button>
+					</div>
+				) : null}
+				<button
+					className="w-20 h-20 rounded-xl overflow-hidden shadow-lg border-2 border-white bg-slate-800 text-white flex flex-col items-center justify-center hover:bg-slate-700 transition-colors"
+					onClick={() => setShowModeSwitcher((isOpen) => !isOpen)}
+					type="button"
+				>
+					<span className="text-xs font-bold leading-tight">
+						Ganti
+						<br />
+						Mode
+					</span>
+				</button>
+			</div>
+
+			{/* Legend Overlay (Bottom Right) */}
+			<div className="absolute bottom-4 right-4 z-10 bg-white rounded-2xl shadow-xl border border-slate-200 p-4 w-56 animate-in slide-in-from-right-2 fade-in duration-300">
+				{layerMode === "heatmap" ? (
+					<>
+						<h3 className="mb-3 text-sm font-bold text-slate-800">
+							Skor Kerawanan
+						</h3>
+						<div className="h-3 w-full bg-gradient-to-r from-yellow-400 via-orange-500 to-red-700" />
+						<div className="mt-1 flex justify-between text-[10px] font-medium text-slate-600">
+							<span>0 Rendah</span>
+							<span>50</span>
+							<span>100 Tinggi</span>
+						</div>
+					</>
+				) : (
+					<>
+						<div className="flex justify-between items-center mb-3">
+							<h3 className="font-bold text-slate-800 text-sm">
+								Insiden Wilayah
+							</h3>
+						</div>
+						<div className="space-y-2">
+							<div className="flex items-center justify-between text-xs font-medium text-slate-600">
+								<div className="flex items-center gap-2">
+									<span className="w-3 h-3 rounded-full bg-red-600 shadow-sm" />
+									<span>Risiko Tinggi</span>
+								</div>
+								<span className="text-slate-800 font-bold">
+									{criticalCount + highCount} daerah
+								</span>
+							</div>
+							<div className="flex items-center justify-between text-xs font-medium text-slate-600">
+								<div className="flex items-center gap-2">
+									<span className="w-3 h-3 rounded-full bg-yellow-500 shadow-sm" />
+									<span>Risiko Sedang</span>
+								</div>
+								<span className="text-slate-800 font-bold">
+									{mediumCount} daerah
+								</span>
+							</div>
+							<div className="flex items-center justify-between text-xs font-medium text-slate-600">
+								<div className="flex items-center gap-2">
+									<span className="w-3 h-3 rounded-full bg-green-500 shadow-sm" />
+									<span>Risiko Rendah</span>
+								</div>
+								<span className="text-slate-800 font-bold">
+									{lowCount} daerah
+								</span>
+							</div>
+						</div>
+					</>
+				)}
 			</div>
 		</div>
 	);

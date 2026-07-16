@@ -78,19 +78,19 @@ export default function DashboardPage() {
 				</p>
 			</div>
 
-			<section
+	<section
 				aria-label="Ringkasan operasional"
-				className="grid grid-cols-2 gap-3 lg:grid-cols-4"
+				className="grid grid-cols-2 gap-4 lg:grid-cols-4"
 			>
 				{stats.map((stat) => (
 					<div
-						className="border border-slate-200 bg-white p-4 sm:p-5"
+						className="rounded-3xl border border-slate-100/60 bg-white p-5 sm:p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300"
 						key={stat.label}
 					>
-						<p className="text-xs font-medium text-slate-500 sm:text-sm">
+						<p className="text-xs font-semibold text-slate-500 sm:text-sm">
 							{stat.label}
 						</p>
-						<p className="mt-2 text-2xl font-semibold text-slate-900 sm:text-3xl">
+						<p className="mt-3 text-3xl font-bold text-slate-900 sm:text-4xl tracking-tight">
 							{stat.value}
 						</p>
 					</div>
@@ -98,25 +98,27 @@ export default function DashboardPage() {
 			</section>
 
 			<section className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.7fr)]">
-				<div className="min-w-0">
-					<div className="mb-3 flex items-center gap-2">
-						<h2 className="font-semibold text-slate-900">Peta Insiden</h2>
+				<div className="min-w-0 flex flex-col h-full">
+					<div className="mb-4 flex items-center gap-2 px-1">
+						<h2 className="font-bold text-slate-800 text-lg">Peta Insiden</h2>
 						<ChevronRight className="size-4 text-amber-500" />
 					</div>
-					<IncidentMap
-						className="h-[420px]"
-						incidents={mapIncidents.data ?? []}
-						onSelectIncident={setSelectedIncidentId}
-						units={devices.data ?? []}
-					/>
+					<div className="flex-1 rounded-3xl border border-slate-100/60 bg-white p-2 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
+						<IncidentMap
+							className="h-full min-h-[420px] rounded-2xl"
+							incidents={mapIncidents.data ?? []}
+							onSelectIncident={setSelectedIncidentId}
+							units={devices.data ?? []}
+						/>
+					</div>
 				</div>
 
-				<div className="min-w-0">
-					<div className="mb-3 flex items-center gap-2">
-						<h2 className="font-semibold text-slate-900">Insiden Terbaru</h2>
+				<div className="min-w-0 flex flex-col h-full">
+					<div className="mb-4 flex items-center gap-2 px-1">
+						<h2 className="font-bold text-slate-800 text-lg">Insiden Terbaru</h2>
 						<ChevronRight className="size-4 text-amber-500" />
 					</div>
-					<div className="max-h-[420px] divide-y divide-slate-200 overflow-y-auto border border-slate-200 bg-white">
+					<div className="flex-1 max-h-[440px] divide-y divide-slate-100 overflow-y-auto rounded-3xl border border-slate-100/60 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
 						{incidents.isLoading ? (
 							<p className="p-5 text-sm text-slate-500">Memuat insiden...</p>
 						) : null}
@@ -157,23 +159,27 @@ export default function DashboardPage() {
 				</div>
 			</section>
 
-			<section className="grid gap-6 lg:grid-cols-2">
-				<div className="border border-slate-200 bg-white p-4 sm:p-5">
-					<h2 className="mb-4 font-semibold text-slate-900">
-						Tren Insiden 7 Hari
-					</h2>
-					<TrendChart data={trend.data ?? []} />
+			<section className="grid gap-6 lg:grid-cols-2 pb-12">
+				<div className="rounded-3xl border border-slate-100/60 bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all duration-300">
+					<div className="mb-6 flex items-center gap-2">
+						<h2 className="font-bold text-slate-800 text-lg">Tren Insiden 7 Hari</h2>
+					</div>
+					<div className="h-[300px]">
+						<TrendChart data={trend.data ?? []} />
+					</div>
 				</div>
-				<div className="border border-slate-200 bg-white p-4 sm:p-5">
-					<h2 className="mb-4 font-semibold text-slate-900">
-						Komposisi Laporan
-					</h2>
-					<CompositionChart
-						data={(composition.data ?? []).map((item) => ({
-							category: categoryLabels[item.category] ?? item.category,
-							count: item.count,
-						}))}
-					/>
+				<div className="rounded-3xl border border-slate-100/60 bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all duration-300">
+					<div className="mb-6 flex items-center gap-2">
+						<h2 className="font-bold text-slate-800 text-lg">Komposisi Laporan</h2>
+					</div>
+					<div className="h-[300px]">
+						<CompositionChart
+							data={(composition.data ?? []).map((item) => ({
+								category: categoryLabels[item.category] ?? item.category,
+								count: item.count,
+							}))}
+						/>
+					</div>
 				</div>
 			</section>
 

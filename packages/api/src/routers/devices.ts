@@ -3,6 +3,11 @@ import { z } from "zod";
 
 import { protectedProcedure, router, supervisorProcedure } from "../index";
 import {
+	invalidateRedisCache,
+	mapCacheKeys,
+	withRedisCache,
+} from "../lib/redis-cache";
+import {
 	bwcConnectionStatusSchema,
 	idSchema,
 	latitudeSchema,
@@ -28,7 +33,7 @@ export const devicesRouter = router({
 				throw new TRPCError({ code: "NOT_FOUND", message: "Device not found" });
 			}
 
-			return ctx.db.bwcDevice.update({
+			const updated = await ctx.db.bwcDevice.update({
 				data: {
 					connectionStatus: input.status,
 					lastLat: input.lat,
@@ -37,6 +42,8 @@ export const devicesRouter = router({
 				},
 				where: { id: device.id },
 			});
+			await invalidateRedisCache(mapCacheKeys.devices);
+			return updated;
 		}),
 	list: protectedProcedure
 		.input(
@@ -45,26 +52,41 @@ export const devicesRouter = router({
 				.optional()
 		)
 		.query(async ({ ctx, input }) => {
-			const devices = await ctx.db.bwcDevice.findMany({
-				include: {
-					personnel: {
+			const devices = await withRedisCache({
+				key: mapCacheKeys.devices,
+				loader: async () => {
+					const rows = await ctx.db.bwcDevice.findMany({
+						orderBy: { updatedAt: "desc" },
 						select: {
-							badgeNo: true,
-							currentStatus: true,
+							connectionStatus: true,
 							id: true,
-							name: true,
+							lastLat: true,
+							lastLng: true,
+							lastPingAt: true,
+							personnel: {
+								select: {
+									badgeNo: true,
+									currentStatus: true,
+									id: true,
+									name: true,
+								},
+							},
 						},
-					},
+					});
+					return rows.map((device) => ({
+						...device,
+						lastPingAt: device.lastPingAt?.getTime() ?? null,
+					}));
 				},
-				orderBy: { updatedAt: "desc" },
+				ttlSeconds: 2,
 			});
 			const staleBefore = Date.now() - (input?.staleAfterMinutes ?? 5) * 60_000;
 
-			return devices.map((device) => ({
+			return devices.map(({ lastPingAt, ...device }) => ({
 				...device,
 				effectiveStatus:
 					device.connectionStatus === "LIVE" &&
-					(!device.lastPingAt || device.lastPingAt.getTime() < staleBefore)
+					(!lastPingAt || lastPingAt < staleBefore)
 						? ("STALE" as const)
 						: device.connectionStatus,
 			}));
@@ -88,11 +110,13 @@ export const devicesRouter = router({
 				});
 			}
 
-			return ctx.db.bwcDevice.upsert({
+			const registered = await ctx.db.bwcDevice.upsert({
 				create: input,
 				update: { deviceCode: input.deviceCode },
 				where: { personnelId: personnel.id },
 			});
+			await invalidateRedisCache(mapCacheKeys.devices);
+			return registered;
 		}),
 	setConnectionStatus: supervisorProcedure
 		.input(z.object({ id: idSchema, status: bwcConnectionStatusSchema }))
@@ -105,10 +129,12 @@ export const devicesRouter = router({
 				throw new TRPCError({ code: "NOT_FOUND", message: "Device not found" });
 			}
 
-			return ctx.db.bwcDevice.update({
+			const updated = await ctx.db.bwcDevice.update({
 				data: { connectionStatus: input.status },
 				where: { id: device.id },
 			});
+			await invalidateRedisCache(mapCacheKeys.devices);
+			return updated;
 		}),
 	simulateMovement: protectedProcedure.mutation(async ({ ctx }) => {
 		const devices = await ctx.db.bwcDevice.findMany({
@@ -137,6 +163,7 @@ export const devicesRouter = router({
 			})
 		);
 
+		await invalidateRedisCache(mapCacheKeys.devices);
 		return { devices: updated, tick };
 	}),
 });

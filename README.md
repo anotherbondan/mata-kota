@@ -50,6 +50,14 @@ pnpm run db:push
 pnpm --filter @mata-kota/db run db:seed
 ```
 
+5. Start Redis for map snapshot caching:
+
+```bash
+docker run --name mata-kota-redis -p 6379:6379 -d redis:7-alpine redis-server --appendonly yes
+```
+
+For Docker Compose environments, run `docker compose -f docker-compose.redis.yml up -d` instead. The API uses `REDIS_URL` and automatically falls back to PostgreSQL when Redis is unavailable.
+
 Then, run the development server:
 
 ```bash

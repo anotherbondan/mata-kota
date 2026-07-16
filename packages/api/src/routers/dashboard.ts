@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { protectedProcedure, router } from "../index";
+import { mapCacheKeys, withRedisCache } from "../lib/redis-cache";
 
 const JAKARTA_OFFSET_MS = 7 * 60 * 60 * 1000;
 
@@ -25,23 +26,33 @@ export const dashboardRouter = router({
 				})
 				.optional()
 		)
-		.query(({ ctx, input }) =>
-			ctx.db.incident.findMany({
-				orderBy: { createdAt: "desc" },
-				select: {
-					category: true,
-					createdAt: true,
-					id: true,
-					lat: true,
-					lng: true,
-					severity: true,
-					status: true,
+		.query(({ ctx, input }) => {
+			const activeOnly = input?.activeOnly !== false;
+			return withRedisCache({
+				key: mapCacheKeys.incidents(activeOnly),
+				loader: async () => {
+					const incidents = await ctx.db.incident.findMany({
+						orderBy: { createdAt: "desc" },
+						select: {
+							category: true,
+							createdAt: true,
+							id: true,
+							lat: true,
+							lng: true,
+							severity: true,
+							status: true,
+						},
+						take: 500,
+						where: activeOnly ? { status: { not: "RESOLVED" } } : {},
+					});
+					return incidents.map((incident) => ({
+						...incident,
+						createdAt: incident.createdAt.toISOString(),
+					}));
 				},
-				take: 500,
-				where:
-					input?.activeOnly === false ? {} : { status: { not: "RESOLVED" } },
-			})
-		),
+				ttlSeconds: 5,
+			});
+		}),
 	overview: protectedProcedure.query(async ({ ctx }) => {
 		const today = startOfJakartaDay(new Date());
 		const [
