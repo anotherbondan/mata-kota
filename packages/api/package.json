@@ -1,0 +1,27 @@
+{
+  "name": "@mata-kota/api",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {},
+  "dependencies": {
+    "@mata-kota/auth": "workspace:*",
+    "@mata-kota/db": "workspace:*",
+    "@mata-kota/env": "workspace:*",
+    "@trpc/client": "catalog:",
+    "@trpc/server": "catalog:",
+    "dotenv": "catalog:",
+    "next": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@mata-kota/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}

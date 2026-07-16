@@ -1,0 +1,24 @@
+{
+  "name": "@mata-kota/auth",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {},
+  "dependencies": {
+    "@mata-kota/db": "workspace:*",
+    "@mata-kota/env": "workspace:*",
+    "better-auth": "catalog:",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@mata-kota/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}
