@@ -1,5 +1,7 @@
 "use client";
 
+import type { inferRouterOutputs } from "@trpc/server";
+import type { AppRouter } from "@mata-kota/api/routers/index";
 import { useQuery } from "@tanstack/react-query";
 import { Clock, Filter, MapPin } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -18,7 +20,17 @@ import { trpc } from "@/utils/trpc";
 
 const POLLING_INTERVAL = 10_000;
 
-export default function MapPageContent() {
+type RouterOutput = inferRouterOutputs<AppRouter>;
+type IncidentsOutput = RouterOutput["dashboard"]["incidentMap"];
+type DevicesOutput = RouterOutput["devices"]["list"];
+
+export default function MapPageContent({
+	initialIncidents,
+	initialDevices,
+}: {
+	initialIncidents?: IncidentsOutput;
+	initialDevices?: DevicesOutput;
+}) {
 	useMockOperationalFeed();
 	const [category, setCategory] = useState("ALL");
 	const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(
@@ -28,6 +40,7 @@ export default function MapPageContent() {
 	const [timeRange, setTimeRange] = useState("24");
 	const incidents = useQuery({
 		...trpc.dashboard.incidentMap.queryOptions({ activeOnly: false }),
+		initialData: initialIncidents,
 		refetchInterval: POLLING_INTERVAL,
 	});
 	const latest = useQuery({
@@ -36,6 +49,7 @@ export default function MapPageContent() {
 	});
 	const devices = useQuery({
 		...trpc.devices.list.queryOptions(),
+		initialData: initialDevices,
 		refetchInterval: POLLING_INTERVAL,
 	});
 
@@ -51,7 +65,7 @@ export default function MapPageContent() {
 
 	return (
 		<main className="mx-auto grid w-full max-w-[1600px] gap-4 p-4 lg:h-[calc(100vh-4rem)] lg:grid-cols-[minmax(0,1fr)_360px] lg:overflow-hidden">
-			<section className="flex min-h-155 rounded-lg min-w-0 flex-col border border-slate-200 bg-white lg:min-h-0">
+			<section className="flex min-h-[620px] rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] min-w-0 flex-col border border-slate-100/60 bg-white lg:min-h-0">
 				<div className="flex flex-col gap-3 border-slate-200 border-b p-3 sm:flex-row sm:items-center">
 					<div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
 						<Filter className="size-4" /> Filter Peta
@@ -59,7 +73,7 @@ export default function MapPageContent() {
 					<div className="grid flex-1 grid-cols-1 gap-2 sm:grid-cols-3">
 						<select
 							aria-label="Filter kategori"
-							className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none transition-colors focus:border-primary-500 focus:ring-1 focus:ring-primary-500/20"
+							className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition-colors focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
 							onChange={(event) => setCategory(event.target.value)}
 							value={category}
 						>
@@ -72,7 +86,7 @@ export default function MapPageContent() {
 						</select>
 						<select
 							aria-label="Filter tingkat keparahan"
-							className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none transition-colors focus:border-primary-500 focus:ring-1 focus:ring-primary-500/20"
+							className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition-colors focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
 							onChange={(event) => setSeverity(event.target.value)}
 							value={severity}
 						>
@@ -84,7 +98,7 @@ export default function MapPageContent() {
 						</select>
 						<select
 							aria-label="Filter waktu"
-							className="h-9 rounded-lg border border-slate-200 bg-white px-3 text-sm outline-none transition-colors focus:border-primary-500 focus:ring-1 focus:ring-primary-500/20"
+							className="h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none transition-colors focus:border-primary-500 focus:ring-2 focus:ring-primary-100"
 							onChange={(event) => setTimeRange(event.target.value)}
 							value={timeRange}
 						>
@@ -105,7 +119,7 @@ export default function MapPageContent() {
 				/>
 			</section>
 
-			<aside className="min-h-0 border rounded-lg border-slate-200 bg-white lg:flex lg:flex-col overflow-hidden">
+			<aside className="min-h-0 border rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border-slate-100/60 bg-white lg:flex lg:flex-col overflow-hidden">
 				<div className="border-slate-200 border-b p-4">
 					<h1 className="font-semibold text-slate-900">Insiden Terbaru</h1>
 					<p className="mt-1 text-xs text-slate-500">

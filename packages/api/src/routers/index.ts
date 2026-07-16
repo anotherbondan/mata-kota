@@ -1,4 +1,4 @@
-import { protectedProcedure, publicProcedure, router } from "../index";
+import { protectedProcedure, publicProcedure, router, t } from "../index";
 import { assignmentsRouter } from "./assignments";
 import { dashboardRouter } from "./dashboard";
 import { devicesRouter } from "./devices";
@@ -21,3 +21,5 @@ export const appRouter = router({
 	reports: reportsRouter,
 });
 export type AppRouter = typeof appRouter;
+
+export const createCaller = t.createCallerFactory(appRouter);

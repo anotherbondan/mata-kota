@@ -11,6 +11,7 @@ datasource db {
 enum UserRole {
   OPERATOR
   SUPERVISOR
+  PERSONNEL
 }
 
 enum PersonnelStatus {
@@ -87,6 +88,8 @@ model Personnel {
   name          String
   badgeNo       String            @unique
   unitType      String
+  userId        String?           @unique
+  user          User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
   currentStatus PersonnelStatus   @default(AVAILABLE)
   updatedAt     DateTime          @updatedAt
   bwcDevice     BwcDevice?

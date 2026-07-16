@@ -210,7 +210,7 @@ function IncidentDialog({ incidentId, onClose }: IncidentDialogProps) {
 			<div
 				aria-labelledby="incident-dialog-title"
 				aria-modal="true"
-				className="relative flex h-full max-h-full w-full max-w-5xl flex-col overflow-hidden bg-white shadow-2xl sm:h-auto sm:max-h-[92vh] sm:rounded-lg"
+				className="relative flex h-full max-h-full w-full max-w-5xl flex-col overflow-hidden bg-white shadow-2xl sm:h-auto sm:max-h-[92vh] sm:rounded-3xl"
 				role="dialog"
 			>
 				<header className="flex items-center gap-3 border-slate-200 border-b px-4 py-3 sm:px-6">
@@ -503,7 +503,7 @@ function IncidentDialog({ incidentId, onClose }: IncidentDialogProps) {
 									{allowBusy ? (
 										<textarea
 											aria-label="Alasan override"
-											className="min-h-20 w-full border border-amber-300 bg-white p-3 text-sm outline-none focus:border-amber-500"
+											className="min-h-20 w-full rounded-xl border border-amber-300 bg-white p-3 text-sm outline-none transition-colors focus:border-amber-500 focus:ring-2 focus:ring-amber-200/50"
 											onChange={(event) =>
 												setOverrideReason(event.target.value)
 											}

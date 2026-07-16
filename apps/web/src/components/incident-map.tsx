@@ -1,7 +1,6 @@
 "use client";
 
 import mapboxgl from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useRef, useState } from "react";
 
 export interface IncidentMapItem {
@@ -32,6 +31,7 @@ interface IncidentMapProps {
 const EMPTY_UNITS: UnitMapItem[] = [];
 const JAKARTA_CENTER: [number, number] = [106.8272, -6.1751];
 const MAPBOX_STYLE = "mapbox://styles/mapbox/light-v11";
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
 function generatedHeatmapScore(id: string) {
 	let hash = 0;
@@ -110,8 +110,6 @@ export default function IncidentMap({
 	incidentsRef.current = incidents;
 	onSelectRef.current = onSelectIncident;
 	unitsRef.current = units;
-
-	const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
 	// Calculate counts for legend
 	const criticalCount = incidents.filter(
@@ -328,6 +326,25 @@ export default function IncidentMap({
 
 		const resizeObserver = new ResizeObserver(() => map.resize());
 		resizeObserver.observe(container);
+
+		// Try to get user location
+		if ("geolocation" in navigator) {
+			navigator.geolocation.getCurrentPosition(
+				(position) => {
+					if (mapRef.current) {
+						mapRef.current.flyTo({
+							center: [position.coords.longitude, position.coords.latitude],
+							zoom: 12,
+							essential: true
+						});
+					}
+				},
+				(error) => {
+					console.warn("Geolocation denied or failed:", error);
+				},
+				{ timeout: 10000 }
+			);
+		}
 
 		return () => {
 			resizeObserver.disconnect();

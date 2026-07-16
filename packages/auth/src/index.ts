@@ -11,6 +11,15 @@ export function createAuth() {
 	const prisma = createPrismaClient();
 
 	return betterAuth({
+		user: {
+			additionalFields: {
+				role: {
+					type: "string",
+					required: true,
+					defaultValue: "OPERATOR",
+				},
+			},
+		},
 		baseURL: env.BETTER_AUTH_URL,
 		database: prismaAdapter(prisma, {
 			provider: "postgresql",
@@ -27,11 +36,29 @@ export function createAuth() {
 							});
 						}
 
-						await prisma.policeOfficer.create({
+						const personnel = await prisma.personnel.findUnique({
+							where: { badgeNo: nrp },
+						});
+
+						if (!personnel) {
+							// If they register but aren't in the personnel system yet, we might want to reject them,
+							// but for now we can just throw an error or create a placeholder.
+							// Since the plan was to have Operators create personnel, when they register, they must exist!
+							throw new APIError("BAD_REQUEST", {
+								message: "Personnel record not found for this NRP",
+							});
+						}
+
+						await prisma.personnel.update({
+							where: { badgeNo: nrp },
 							data: {
-								nrp,
 								userId: user.id,
 							},
+						});
+						
+						await prisma.user.update({
+							where: { id: user.id },
+							data: { role: "PERSONNEL" }
 						});
 					},
 				},
@@ -59,12 +86,12 @@ export function createAuth() {
 				}
 
 				if (context.path === "/sign-in/email") {
-					const officer = await prisma.policeOfficer.findUnique({
+					const personnel = await prisma.personnel.findUnique({
 						select: { id: true },
-						where: { nrp },
+						where: { badgeNo: nrp },
 					});
 
-					if (!officer) {
+					if (!personnel) {
 						throw new APIError("UNAUTHORIZED", {
 							message: "Invalid NRP or password",
 						});

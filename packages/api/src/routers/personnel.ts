@@ -1,6 +1,8 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
+import { auth } from "@mata-kota/auth";
+import { nrpToAuthEmail } from "@mata-kota/auth/nrp";
 import { protectedProcedure, router, supervisorProcedure } from "../index";
 import { haversineDistanceKm } from "../lib/geo";
 import { idSchema, paginationSchema, personnelStatusSchema } from "../schemas";
@@ -59,7 +61,27 @@ export const personnelRouter = router({
 				});
 			}
 
-			return ctx.db.personnel.create({ data: input });
+			const personnel = await ctx.db.personnel.create({ data: input });
+
+			// Automatically create a user account for the new personnel with a default password.
+			// Their email will be formatted as badgeNo@polri.go.id.
+			try {
+				const email = nrpToAuthEmail(input.badgeNo);
+				// We use a predefined default password. They can change it later.
+				const password = "Password123!";
+				await auth.api.signUpEmail({
+					body: {
+						email,
+						password,
+						name: input.name,
+					}
+				});
+			} catch (error) {
+				console.error("Failed to auto-create auth user for personnel:", error);
+				// Non-fatal, personnel is created, but no login account yet.
+			}
+
+			return personnel;
 		}),
 	delete: supervisorProcedure
 		.input(z.object({ id: idSchema }))
@@ -242,5 +264,56 @@ export const personnelRouter = router({
 				data: { currentStatus: input.status },
 				where: { id: personnel.id },
 			});
+		}),
+	syncExternal: supervisorProcedure
+		.input(
+			z.array(
+				z.object({
+					badgeNo: z.string().trim().min(3).max(50),
+					name: z.string().trim().min(2).max(150),
+					unitType: z.string().trim().min(2).max(100),
+				})
+			)
+		)
+		.mutation(async ({ ctx, input }) => {
+			if (input.length === 0) return { count: 0 };
+
+			// Get all existing badge numbers in the input to filter out duplicates
+			const inputBadgeNos = input.map((i) => i.badgeNo);
+			const existing = await ctx.db.personnel.findMany({
+				where: { badgeNo: { in: inputBadgeNos } },
+				select: { badgeNo: true },
+			});
+			const existingBadges = new Set(existing.map((e) => e.badgeNo));
+			const newOfficers = input.filter((i) => !existingBadges.has(i.badgeNo));
+
+			if (newOfficers.length === 0) return { count: 0 };
+
+			const created = [];
+			for (const officer of newOfficers) {
+				const personnel = await ctx.db.personnel.create({
+					data: {
+						badgeNo: officer.badgeNo,
+						name: officer.name,
+						unitType: officer.unitType,
+					},
+				});
+				created.push(personnel);
+				
+				try {
+					const email = nrpToAuthEmail(officer.badgeNo);
+					await auth.api.signUpEmail({
+						body: {
+							email,
+							password: "Password123!",
+							name: officer.name,
+						}
+					});
+				} catch (error) {
+					console.error(`Failed to auto-create auth user for personnel ${officer.badgeNo}:`, error);
+				}
+			}
+
+			return { count: created.length };
 		}),
 });

@@ -10,10 +10,12 @@ import {
 	User,
 	Wifi,
 	WifiOff,
+	RefreshCw
 } from "lucide-react";
 import { useDeferredValue, useMemo, useState } from "react";
 
 import { trpc } from "@/utils/trpc";
+import HrSyncModal from "./hr-sync-modal";
 
 const personnelStatusLabels: Record<string, string> = {
 	ASSIGNED: "Ditugaskan",
@@ -42,6 +44,7 @@ export default function PersonnelContent() {
 	const [status, setStatus] = useState("ALL");
 	const [unitType, setUnitType] = useState("ALL");
 	const [expandedId, setExpandedId] = useState<string | null>(null);
+	const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
 	const deferredSearch = useDeferredValue(search.trim());
 
 	const personnel = useQuery(
@@ -73,13 +76,23 @@ export default function PersonnelContent() {
 	return (
 		<main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
 			<div className="flex flex-col gap-4 border-slate-200 border-b pb-5 lg:flex-row lg:items-end lg:justify-between">
-				<div>
-					<h1 className="text-2xl font-bold text-slate-900">
-						Manajemen Personel
-					</h1>
-					<p className="mt-1 text-sm text-slate-500">
-						{items.length} personel terdaftar
-					</p>
+				<div className="flex justify-between items-center w-full">
+					<div>
+						<h1 className="text-2xl font-bold text-slate-900">
+							Manajemen Personel
+						</h1>
+						<p className="mt-1 text-sm text-slate-500">
+							{items.length} personel terdaftar
+						</p>
+					</div>
+					<button
+						className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-2 text-sm font-bold text-white shadow-md hover:shadow-lg hover:from-blue-700 hover:to-blue-800 active:scale-[0.97] transition-all"
+						onClick={() => setIsSyncModalOpen(true)}
+						type="button"
+					>
+						<RefreshCw className="size-4" />
+						Sinkronisasi SDM
+					</button>
 				</div>
 				<div className="grid gap-2 sm:grid-cols-[minmax(220px,1fr)_160px_160px]">
 					<div className="relative">
@@ -288,6 +301,11 @@ export default function PersonnelContent() {
 					);
 				})}
 			</div>
+			
+			<HrSyncModal 
+				isOpen={isSyncModalOpen} 
+				onClose={() => setIsSyncModalOpen(false)} 
+			/>
 		</main>
 	);
 }
