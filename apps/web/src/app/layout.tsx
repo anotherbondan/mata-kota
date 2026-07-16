@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 
 import "../index.css";
+import "mapbox-gl/dist/mapbox-gl.css";
 import Header from "@/components/header";
 import Providers from "@/components/providers";
 
