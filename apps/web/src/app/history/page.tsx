@@ -3,6 +3,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ArrowDownUp, ChevronDown, Clock, Filter, MapPin, Search } from "lucide-react";
 
+import { IncidentCard } from "./incident-card";
+
 export default async function HistoryPage() {
 	const session = await auth.api.getSession({
 		headers: await headers(),
@@ -37,7 +39,7 @@ export default async function HistoryPage() {
 	];
 
 	return (
-		<div className="container mx-auto px-6 md:px-12 py-10 max-w-7xl space-y-8 min-h-screen bg-white">
+		<div className="container mx-auto px-6 md:px-12 pt-10 pb-20 flex-col gap-6 items-center min-h-screen bg-white flex">
 			<h1 className="text-2xl font-bold text-primary-500">Riwayat Insiden</h1>
 			
 			{/* Toolbar */}
@@ -65,37 +67,7 @@ export default async function HistoryPage() {
 			{/* Incident List */}
 			<div className="flex flex-col gap-4 max-w-5xl">
 				{incidents.map((incident) => (
-					<div
-						key={incident.id}
-						className="rounded-xl border border-gray-200 bg-white p-5 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)] hover:shadow-md transition-shadow"
-					>
-						<div className="flex items-start justify-between mb-4">
-							<h3 className="font-bold text-slate-800 text-lg">
-								{incident.title}
-							</h3>
-							<span className="rounded-full bg-red-200 text-red-700 px-4 py-1 text-xs font-bold shrink-0">
-								{incident.severity}
-							</span>
-						</div>
-						<div className="space-y-3 text-sm text-slate-600 font-medium">
-							<div className="flex items-center gap-2">
-								<Clock className="h-4 w-4 text-primary-400" />
-								<span>{incident.date}</span>
-							</div>
-							<div className="flex items-start gap-2 max-w-3xl">
-								<MapPin className="h-4 w-4 text-primary-400 shrink-0 mt-0.5" />
-								<span className="leading-relaxed">
-									{incident.address}
-								</span>
-							</div>
-						</div>
-						<div className="mt-4 flex justify-end">
-							<button className="flex items-center gap-1 text-[10px] font-bold text-slate-500 hover:text-slate-800 transition-colors">
-								Lihat Selengkapnya
-								<ChevronDown className="h-3 w-3 text-primary-400" />
-							</button>
-						</div>
-					</div>
+					<IncidentCard key={incident.id} incident={incident} />
 				))}
 			</div>
 		</div>
