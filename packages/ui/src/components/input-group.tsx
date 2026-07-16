@@ -1,7 +1,3 @@
-// biome-ignore-all lint/a11y/noNoninteractiveElementInteractions: Input adornments focus the grouped form control and may contain interactive children.
-// biome-ignore-all lint/a11y/useKeyWithClickEvents: Keyboard interaction remains on the underlying input, textarea, or nested button.
-// biome-ignore-all lint/a11y/useSemanticElements: This primitive intentionally renders layout wrappers, not a fieldset.
-
 "use client";
 
 import { Button } from "@mata-kota/ui/components/button";

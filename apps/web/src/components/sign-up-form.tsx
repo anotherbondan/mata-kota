@@ -70,25 +70,22 @@ export default function SignUpForm({
 	};
 
 	return (
-		<div className="mx-auto mt-10 w-full max-w-md p-6">
-			<h1 className="mb-6 text-center font-bold text-3xl">Create Account</h1>
-
-			<form className="space-y-4" onSubmit={handleSubmit}>
+		<div className="w-full">
+			<form className="flex flex-col gap-4" onSubmit={handleSubmit}>
 				<div>
 					<form.Field name="name">
 						{(field) => (
-							<div className="space-y-2">
+							<div className="flex flex-col gap-2">
 								<Label htmlFor={field.name}>Name</Label>
 								<Input
 									id={field.name}
 									name={field.name}
 									onBlur={field.handleBlur}
-									// biome-ignore lint/performance/noJsxPropsBind: TanStack Form exposes field-specific handlers through render props.
 									onChange={(e) => field.handleChange(e.target.value)}
 									value={field.state.value}
 								/>
 								{field.state.meta.errors.map((error) => (
-									<p className="text-red-500" key={error?.message}>
+									<p className="text-destructive text-sm" key={error?.message}>
 										{error?.message}
 									</p>
 								))}
@@ -100,19 +97,18 @@ export default function SignUpForm({
 				<div>
 					<form.Field name="email">
 						{(field) => (
-							<div className="space-y-2">
+							<div className="flex flex-col gap-2">
 								<Label htmlFor={field.name}>Email</Label>
 								<Input
 									id={field.name}
 									name={field.name}
 									onBlur={field.handleBlur}
-									// biome-ignore lint/performance/noJsxPropsBind: TanStack Form exposes field-specific handlers through render props.
 									onChange={(e) => field.handleChange(e.target.value)}
 									type="email"
 									value={field.state.value}
 								/>
 								{field.state.meta.errors.map((error) => (
-									<p className="text-red-500" key={error?.message}>
+									<p className="text-destructive text-sm" key={error?.message}>
 										{error?.message}
 									</p>
 								))}
@@ -124,19 +120,18 @@ export default function SignUpForm({
 				<div>
 					<form.Field name="password">
 						{(field) => (
-							<div className="space-y-2">
+							<div className="flex flex-col gap-2">
 								<Label htmlFor={field.name}>Password</Label>
 								<Input
 									id={field.name}
 									name={field.name}
 									onBlur={field.handleBlur}
-									// biome-ignore lint/performance/noJsxPropsBind: TanStack Form exposes field-specific handlers through render props.
 									onChange={(e) => field.handleChange(e.target.value)}
 									type="password"
 									value={field.state.value}
 								/>
 								{field.state.meta.errors.map((error) => (
-									<p className="text-red-500" key={error?.message}>
+									<p className="text-destructive text-sm" key={error?.message}>
 										{error?.message}
 									</p>
 								))}
@@ -158,12 +153,8 @@ export default function SignUpForm({
 				</form.Subscribe>
 			</form>
 
-			<div className="mt-4 text-center">
-				<Button
-					className="text-indigo-600 hover:text-indigo-800"
-					onClick={onSwitchToSignIn}
-					variant="link"
-				>
+			<div className="mt-5 text-center">
+				<Button onClick={onSwitchToSignIn} variant="link">
 					Already have an account? Sign In
 				</Button>
 			</div>

@@ -1,5 +1,3 @@
-// biome-ignore-all lint/a11y/noLabelWithoutControl: This shared primitive receives htmlFor or children from consumers.
-
 "use client";
 
 import { cn } from "@mata-kota/ui/lib/utils";

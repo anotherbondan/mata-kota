@@ -6,7 +6,6 @@ import { MessageScroller as MessageScrollerPrimitive } from "@shadcn/react/messa
 import { ArrowDownIcon } from "lucide-react";
 import type * as React from "react";
 
-// biome-ignore lint/performance/noBarrelFile: This component wrapper intentionally re-exports the primitive hooks.
 export {
 	useMessageScroller,
 	useMessageScrollerScrollable,
