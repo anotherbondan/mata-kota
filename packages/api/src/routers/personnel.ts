@@ -1,0 +1,168 @@
+import { TRPCError } from "@trpc/server";
+import { z } from "zod";
+
+import { protectedProcedure, router, supervisorProcedure } from "../index";
+import { idSchema, paginationSchema, personnelStatusSchema } from "../schemas";
+
+export const personnelRouter = router({
+	byId: protectedProcedure
+		.input(z.object({ id: idSchema }))
+		.query(async ({ ctx, input }) => {
+			const personnel = await ctx.db.personnel.findUnique({
+				include: {
+					assignments: {
+						include: {
+							incident: {
+								select: {
+									category: true,
+									id: true,
+									severity: true,
+									status: true,
+								},
+							},
+						},
+						orderBy: { assignedAt: "desc" },
+						take: 20,
+					},
+					bwcDevice: true,
+				},
+				where: { id: input.id },
+			});
+
+			if (!personnel) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Personnel not found",
+				});
+			}
+
+			return personnel;
+		}),
+	create: supervisorProcedure
+		.input(
+			z.object({
+				badgeNo: z.string().trim().min(3).max(50),
+				name: z.string().trim().min(2).max(150),
+				unitType: z.string().trim().min(2).max(100),
+			})
+		)
+		.mutation(async ({ ctx, input }) => {
+			const duplicate = await ctx.db.personnel.findUnique({
+				select: { id: true },
+				where: { badgeNo: input.badgeNo },
+			});
+			if (duplicate) {
+				throw new TRPCError({
+					code: "CONFLICT",
+					message: "Badge number already exists",
+				});
+			}
+
+			return ctx.db.personnel.create({ data: input });
+		}),
+	delete: supervisorProcedure
+		.input(z.object({ id: idSchema }))
+		.mutation(async ({ ctx, input }) => {
+			const personnel = await ctx.db.personnel.findUnique({
+				select: { _count: { select: { assignments: true } }, id: true },
+				where: { id: input.id },
+			});
+			if (!personnel) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Personnel not found",
+				});
+			}
+			if (personnel._count.assignments > 0) {
+				throw new TRPCError({
+					code: "CONFLICT",
+					message: "Personnel with assignment history cannot be deleted",
+				});
+			}
+
+			return ctx.db.personnel.delete({ where: { id: personnel.id } });
+		}),
+	list: protectedProcedure
+		.input(
+			paginationSchema
+				.extend({
+					search: z.string().trim().min(1).max(100).optional(),
+					status: personnelStatusSchema.optional(),
+					unitType: z.string().trim().min(1).max(100).optional(),
+				})
+				.optional()
+		)
+		.query(async ({ ctx, input }) => {
+			const limit = input?.limit ?? 20;
+			const items = await ctx.db.personnel.findMany({
+				cursor: input?.cursor ? { id: input.cursor } : undefined,
+				include: {
+					_count: { select: { assignments: true } },
+					bwcDevice: true,
+				},
+				orderBy: { name: "asc" },
+				skip: input?.cursor ? 1 : 0,
+				take: limit + 1,
+				where: {
+					...(input?.search
+						? {
+								OR: [
+									{ badgeNo: { contains: input.search, mode: "insensitive" } },
+									{ name: { contains: input.search, mode: "insensitive" } },
+								],
+							}
+						: {}),
+					...(input?.status ? { currentStatus: input.status } : {}),
+					...(input?.unitType
+						? { unitType: { equals: input.unitType, mode: "insensitive" } }
+						: {}),
+				},
+			});
+			const nextItem = items.length > limit ? items.pop() : undefined;
+
+			return { items, nextCursor: nextItem?.id ?? null };
+		}),
+	update: supervisorProcedure
+		.input(
+			z.object({
+				badgeNo: z.string().trim().min(3).max(50).optional(),
+				id: idSchema,
+				name: z.string().trim().min(2).max(150).optional(),
+				unitType: z.string().trim().min(2).max(100).optional(),
+			})
+		)
+		.mutation(async ({ ctx, input }) => {
+			const { id, ...data } = input;
+			const personnel = await ctx.db.personnel.findUnique({
+				select: { id: true },
+				where: { id },
+			});
+			if (!personnel) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Personnel not found",
+				});
+			}
+
+			return ctx.db.personnel.update({ data, where: { id } });
+		}),
+	updateStatus: supervisorProcedure
+		.input(z.object({ id: idSchema, status: personnelStatusSchema }))
+		.mutation(async ({ ctx, input }) => {
+			const personnel = await ctx.db.personnel.findUnique({
+				select: { id: true },
+				where: { id: input.id },
+			});
+			if (!personnel) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Personnel not found",
+				});
+			}
+
+			return ctx.db.personnel.update({
+				data: { currentStatus: input.status },
+				where: { id: personnel.id },
+			});
+		}),
+});

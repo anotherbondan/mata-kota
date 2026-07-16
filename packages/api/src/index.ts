@@ -7,7 +7,7 @@ export const t = initTRPC.context<Context>().create();
 export const { procedure: publicProcedure, router } = t;
 
 export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
-	if (!ctx.session) {
+	if (!ctx.session?.user) {
 		throw new TRPCError({
 			cause: "No session",
 			code: "UNAUTHORIZED",
@@ -21,3 +21,29 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
 		},
 	});
 });
+
+export const supervisorProcedure = protectedProcedure.use(
+	async ({ ctx, next }) => {
+		const currentUser = await ctx.db.user.findUnique({
+			select: {
+				id: true,
+				role: true,
+			},
+			where: { id: ctx.session.user.id },
+		});
+
+		if (currentUser?.role !== "SUPERVISOR") {
+			throw new TRPCError({
+				code: "FORBIDDEN",
+				message: "Supervisor access required",
+			});
+		}
+
+		return next({
+			ctx: {
+				...ctx,
+				currentUser,
+			},
+		});
+	}
+);

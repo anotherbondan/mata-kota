@@ -9,9 +9,9 @@ export default function Dashboard({
 }: {
 	session: typeof authClient.$Infer.Session;
 }) {
-	const privateData = useQuery(trpc.privateData.queryOptions());
+	const currentUser = useQuery(trpc.me.queryOptions());
 
 	return (
-		<p>API: {privateData.data?.message ?? `Ready for ${session.user.name}`}</p>
+		<p>API: Ready for {currentUser.data?.user.name ?? session.user.name}</p>
 	);
 }

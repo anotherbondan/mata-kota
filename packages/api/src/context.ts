@@ -1,4 +1,5 @@
 import { auth } from "@mata-kota/auth";
+import db from "@mata-kota/db";
 import type { NextRequest } from "next/server";
 
 export async function createContext(req: NextRequest) {
@@ -6,7 +7,7 @@ export async function createContext(req: NextRequest) {
 		headers: req.headers,
 	});
 	return {
-		auth: null,
+		db,
 		session,
 	};
 }
