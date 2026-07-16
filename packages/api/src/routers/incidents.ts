@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { protectedProcedure, router, supervisorProcedure } from "../index";
+import { canTransitionIncident } from "../lib/incident-lifecycle";
 import {
 	idSchema,
 	incidentCategorySchema,
@@ -13,16 +14,8 @@ import {
 	verificationStatusSchema,
 } from "../schemas";
 
-const allowedNextStatus = new Map<string, Set<string>>([
-	["REPORTED", new Set(["VERIFIED"])],
-	["VERIFIED", new Set(["ASSIGNED"])],
-	["ASSIGNED", new Set(["EN_ROUTE"])],
-	["EN_ROUTE", new Set(["ON_SCENE"])],
-	["ON_SCENE", new Set(["RESOLVED"])],
-	["RESOLVED", new Set()],
-]);
-
 const incidentDetailInclude = {
+	aiSummaries: { orderBy: { generatedAt: "desc" as const }, take: 1 },
 	assignments: {
 		include: {
 			personnel: {
@@ -156,7 +149,7 @@ export const incidentsRouter = router({
 					});
 				}
 
-				if (!allowedNextStatus.get(incident.status)?.has(input.status)) {
+				if (!canTransitionIncident(incident.status, input.status)) {
 					throw new TRPCError({
 						code: "CONFLICT",
 						message: `Cannot transition incident from ${incident.status} to ${input.status}`,
@@ -214,4 +207,53 @@ export const incidentsRouter = router({
 				where: { id },
 			});
 		}),
+	verify: protectedProcedure
+		.input(
+			z.object({
+				id: idSchema,
+				note: z.string().trim().max(500).optional(),
+				verificationStatus: verificationStatusSchema,
+			})
+		)
+		.mutation(({ ctx, input }) =>
+			ctx.db.$transaction(async (transaction) => {
+				const incident = await transaction.incident.findUnique({
+					select: { id: true, status: true },
+					where: { id: input.id },
+				});
+				if (!incident) {
+					throw new TRPCError({
+						code: "NOT_FOUND",
+						message: "Incident not found",
+					});
+				}
+
+				const shouldAdvance =
+					input.verificationStatus === "VERIFIED" &&
+					incident.status === "REPORTED";
+				await transaction.incident.update({
+					data: {
+						...(shouldAdvance ? { status: "VERIFIED" as const } : {}),
+						verificationStatus: input.verificationStatus,
+					},
+					where: { id: incident.id },
+				});
+				if (shouldAdvance) {
+					await transaction.incidentStatusLog.create({
+						data: {
+							changedBy: ctx.session.user.id,
+							fromStatus: incident.status,
+							incidentId: incident.id,
+							note: input.note,
+							toStatus: "VERIFIED",
+						},
+					});
+				}
+
+				return transaction.incident.findUnique({
+					include: incidentDetailInclude,
+					where: { id: incident.id },
+				});
+			})
+		),
 });

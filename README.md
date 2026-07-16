@@ -14,7 +14,7 @@ This project was created with [Better-T-Stack](https://github.com/AmanVarshney01
 - **Authentication** - Better-Auth
 - **Maps and geospatial UI** - Mapbox GL JS, Deck.gl, and Turf.js
 - **Charts** - Apache ECharts
-- **Realtime updates** - Socket.IO direct server events
+- **Operational updates** - 10-second polling with idempotent simulated report and BWC feeds
 - **Media and reports** - Cloudinary and pdf-lib
 - **AI service boundary** - FastAPI scaffold for severity classification and incident summaries
 - **Biome** - Linting and formatting
@@ -44,6 +44,12 @@ AI summaries, and status audit logs.
 pnpm run db:push
 ```
 
+4. Load idempotent demo incidents, personnel, evidence, and BWC positions:
+
+```bash
+pnpm --filter @mata-kota/db run db:seed
+```
+
 Then, run the development server:
 
 ```bash
@@ -51,6 +57,20 @@ pnpm run dev
 ```
 
 Open [http://localhost:3001](http://localhost:3001) in your browser to see the fullstack application.
+
+## Operator Workflow
+
+The implemented non-AI MVP flow is:
+
+1. Sign in with an eight-digit NRP and password.
+2. Monitor database-backed incidents on the clustered heatmap and latest-incidents panel.
+3. Open the shared incident detail dialog from either the map, dashboard, or history.
+4. Review evidence and the status timeline, then verify the incident.
+5. Open personnel assignment, search by name or badge number, or run the on-demand nearest calculation.
+6. Assign up to three officers, using an audited override reason when selecting busy personnel.
+7. Read the generated dispatch card and manually confirm En Route.
+
+`NEXT_PUBLIC_MOCK_FEEDS_ENABLED=true` enables one idempotent mock incident per minute and simulated BWC movement every ten seconds. Set it to `false` when connecting real feeds.
 
 ## AI Service
 
@@ -122,4 +142,6 @@ mata-kota/
 - `pnpm run db:generate`: Generate database client/types
 - `pnpm run db:migrate`: Run database migrations
 - `pnpm run db:studio`: Open database studio UI
+- `pnpm --filter @mata-kota/db run db:seed`: Seed reproducible demo data
+- `pnpm --filter @mata-kota/api run test`: Run API unit tests
 - `pnpm run check`: Run Biome formatting and linting

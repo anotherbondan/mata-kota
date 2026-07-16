@@ -38,16 +38,37 @@ export const devicesRouter = router({
 				where: { id: device.id },
 			});
 		}),
-	list: protectedProcedure.query(({ ctx }) =>
-		ctx.db.bwcDevice.findMany({
-			include: {
-				personnel: {
-					select: { badgeNo: true, currentStatus: true, id: true, name: true },
+	list: protectedProcedure
+		.input(
+			z
+				.object({ staleAfterMinutes: z.number().min(1).max(60).default(5) })
+				.optional()
+		)
+		.query(async ({ ctx, input }) => {
+			const devices = await ctx.db.bwcDevice.findMany({
+				include: {
+					personnel: {
+						select: {
+							badgeNo: true,
+							currentStatus: true,
+							id: true,
+							name: true,
+						},
+					},
 				},
-			},
-			orderBy: { updatedAt: "desc" },
-		})
-	),
+				orderBy: { updatedAt: "desc" },
+			});
+			const staleBefore = Date.now() - (input?.staleAfterMinutes ?? 5) * 60_000;
+
+			return devices.map((device) => ({
+				...device,
+				effectiveStatus:
+					device.connectionStatus === "LIVE" &&
+					(!device.lastPingAt || device.lastPingAt.getTime() < staleBefore)
+						? ("STALE" as const)
+						: device.connectionStatus,
+			}));
+		}),
 	register: supervisorProcedure
 		.input(
 			z.object({
@@ -89,4 +110,33 @@ export const devicesRouter = router({
 				where: { id: device.id },
 			});
 		}),
+	simulateMovement: protectedProcedure.mutation(async ({ ctx }) => {
+		const devices = await ctx.db.bwcDevice.findMany({
+			select: { id: true, lastLat: true, lastLng: true },
+			where: {
+				connectionStatus: "LIVE",
+				lastLat: { not: null },
+				lastLng: { not: null },
+			},
+		});
+		const tick = Math.floor(Date.now() / 10_000);
+		const updated = await Promise.all(
+			devices.map((device, index) => {
+				const direction = (tick + index) % 8;
+				const latitudeDelta = Math.sin(direction * (Math.PI / 4)) * 0.000_35;
+				const longitudeDelta = Math.cos(direction * (Math.PI / 4)) * 0.000_35;
+				return ctx.db.bwcDevice.update({
+					data: {
+						lastLat: (device.lastLat ?? 0) + latitudeDelta,
+						lastLng: (device.lastLng ?? 0) + longitudeDelta,
+						lastPingAt: new Date(),
+					},
+					select: { id: true, lastLat: true, lastLng: true, lastPingAt: true },
+					where: { id: device.id },
+				});
+			})
+		);
+
+		return { devices: updated, tick };
+	}),
 });

@@ -202,4 +202,89 @@ export const reportsRouter = router({
 
 			return { items, nextCursor: nextItem?.id ?? null };
 		}),
+	simulateFeed: protectedProcedure.mutation(({ ctx }) =>
+		ctx.db.$transaction(async (transaction) => {
+			const minuteBucket = Math.floor(Date.now() / 60_000);
+			const reporterRef = `MOCK-FEED-${minuteBucket}`;
+			const existing = await transaction.report.findFirst({
+				select: { id: true },
+				where: { reporterRef },
+			});
+			if (existing) {
+				const source = await transaction.incidentSource.findFirst({
+					select: { incidentId: true },
+					where: { sourceId: existing.id, sourceType: "REPORT" },
+				});
+				return { created: false, incidentId: source?.incidentId ?? null };
+			}
+
+			const scenarios = [
+				{
+					category: "THEFT" as const,
+					description:
+						"Laporan warga mengenai dugaan pencurian di area pertokoan.",
+					lat: -6.1751,
+					lng: 106.8272,
+					severity: "HIGH" as const,
+				},
+				{
+					category: "ALTERCATION" as const,
+					description: "Keributan kelompok terpantau di ruang publik.",
+					lat: -6.2088,
+					lng: 106.8456,
+					severity: "MEDIUM" as const,
+				},
+				{
+					category: "TRAFFIC_INCIDENT" as const,
+					description: "Laporan kecelakaan lalu lintas dengan hambatan jalur.",
+					lat: -6.1667,
+					lng: 106.7994,
+					severity: "LOW" as const,
+				},
+			] as const;
+			const scenario = scenarios[minuteBucket % scenarios.length];
+			if (!scenario) {
+				throw new TRPCError({
+					code: "INTERNAL_SERVER_ERROR",
+					message: "Mock scenario unavailable",
+				});
+			}
+			const report = await transaction.report.create({
+				data: {
+					category: scenario.category,
+					description: scenario.description,
+					lat: scenario.lat,
+					lng: scenario.lng,
+					reportedAt: new Date(),
+					reporterRef,
+				},
+			});
+			const incident = await transaction.incident.create({
+				data: {
+					category: scenario.category,
+					evidence: {
+						create: {
+							sourceReportId: report.id,
+							textSnippet: scenario.description,
+							type: "TEXT",
+						},
+					},
+					lat: scenario.lat,
+					lng: scenario.lng,
+					severity: scenario.severity,
+					sources: { create: { sourceId: report.id, sourceType: "REPORT" } },
+					statusLogs: {
+						create: {
+							changedBy: ctx.session.user.id,
+							note: "Simulated feed",
+							toStatus: "REPORTED",
+						},
+					},
+				},
+				select: { id: true },
+			});
+
+			return { created: true, incidentId: incident.id };
+		})
+	),
 });

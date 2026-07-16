@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import { protectedProcedure, router, supervisorProcedure } from "../index";
+import { protectedProcedure, router } from "../index";
 import {
 	assignmentOperationalStatusSchema,
 	idSchema,
@@ -9,6 +9,7 @@ import {
 } from "../schemas";
 
 const assignmentInclude = {
+	assignedByUser: { select: { id: true, name: true } },
 	incident: {
 		select: {
 			category: true,
@@ -29,6 +30,23 @@ const assignmentInclude = {
 		},
 	},
 };
+
+const dispatchAssignmentSelect = {
+	id: true,
+	incident: {
+		select: {
+			category: true,
+			id: true,
+			lat: true,
+			lng: true,
+			severity: true,
+			status: true,
+		},
+	},
+	personnel: {
+		select: { badgeNo: true, id: true, name: true },
+	},
+} as const;
 
 const expectedIncidentStatus = {
 	EN_ROUTE: "ASSIGNED",
@@ -53,28 +71,36 @@ export const assignmentsRouter = router({
 
 			return assignment;
 		}),
-	create: supervisorProcedure
+	create: protectedProcedure
 		.input(
-			z.object({
-				incidentId: idSchema,
-				note: z.string().trim().max(500).optional(),
-				personnelId: idSchema,
-			})
+			z
+				.object({
+					allowBusy: z.boolean().default(false),
+					incidentId: idSchema,
+					note: z.string().trim().max(500).optional(),
+					overrideReason: z.string().trim().max(500).optional(),
+					personnelIds: z.array(idSchema).min(1).max(3),
+				})
+				.refine((value) => !value.allowBusy || Boolean(value.overrideReason), {
+					message: "An override reason is required for busy personnel",
+					path: ["overrideReason"],
+				})
 		)
 		.mutation(({ ctx, input }) =>
 			ctx.db.$transaction(async (transaction) => {
-				const [incident, personnel, duplicate] = await Promise.all([
+				const uniquePersonnelIds = [...new Set(input.personnelIds)];
+				const [incident, personnel, duplicates] = await Promise.all([
 					transaction.incident.findUnique({
 						where: { id: input.incidentId },
 					}),
-					transaction.personnel.findUnique({
-						where: { id: input.personnelId },
+					transaction.personnel.findMany({
+						where: { id: { in: uniquePersonnelIds } },
 					}),
-					transaction.assignment.findFirst({
-						select: { id: true },
+					transaction.assignment.findMany({
+						select: { personnelId: true },
 						where: {
 							incidentId: input.incidentId,
-							personnelId: input.personnelId,
+							personnelId: { in: uniquePersonnelIds },
 						},
 					}),
 				]);
@@ -85,16 +111,17 @@ export const assignmentsRouter = router({
 						message: "Incident not found",
 					});
 				}
-				if (!personnel) {
+				if (personnel.length !== uniquePersonnelIds.length) {
 					throw new TRPCError({
 						code: "NOT_FOUND",
-						message: "Personnel not found",
+						message: "One or more personnel records were not found",
 					});
 				}
-				if (duplicate) {
+				if (duplicates.length > 0) {
 					throw new TRPCError({
 						code: "CONFLICT",
-						message: "Personnel is already assigned to this incident",
+						message:
+							"One or more personnel are already assigned to this incident",
 					});
 				}
 				if (incident.status !== "VERIFIED" && incident.status !== "ASSIGNED") {
@@ -103,41 +130,59 @@ export const assignmentsRouter = router({
 						message: "Only verified incidents can be assigned",
 					});
 				}
-				if (personnel.currentStatus !== "AVAILABLE") {
+				const offlinePersonnel = personnel.find(
+					(officer) => officer.currentStatus === "OFFLINE"
+				);
+				if (offlinePersonnel) {
 					throw new TRPCError({
 						code: "CONFLICT",
-						message: "Personnel is not available",
+						message: `${offlinePersonnel.name} is offline`,
+					});
+				}
+				const busyPersonnel = personnel.filter(
+					(officer) => officer.currentStatus !== "AVAILABLE"
+				);
+				if (busyPersonnel.length > 0 && !input.allowBusy) {
+					throw new TRPCError({
+						code: "CONFLICT",
+						message: "Busy personnel require an explicit override",
 					});
 				}
 
-				const assignment = await transaction.assignment.create({
-					data: {
-						dispatchCardSnapshot: {
-							createdAt: new Date().toISOString(),
-							incident: {
-								category: incident.category,
-								id: incident.id,
-								lat: incident.lat,
-								lng: incident.lng,
-								severity: incident.severity,
+				const assignments = await Promise.all(
+					personnel.map((officer) =>
+						transaction.assignment.create({
+							data: {
+								assignedBy: ctx.session.user.id,
+								dispatchCardSnapshot: {
+									createdAt: new Date().toISOString(),
+									incident: {
+										category: incident.category,
+										id: incident.id,
+										lat: incident.lat,
+										lng: incident.lng,
+										severity: incident.severity,
+									},
+									note: input.note ?? null,
+									overrideReason: input.overrideReason ?? null,
+									personnel: {
+										badgeNo: officer.badgeNo,
+										id: officer.id,
+										name: officer.name,
+										unitType: officer.unitType,
+									},
+								},
+								incidentId: incident.id,
+								personnelId: officer.id,
 							},
-							note: input.note ?? null,
-							personnel: {
-								badgeNo: personnel.badgeNo,
-								id: personnel.id,
-								name: personnel.name,
-								unitType: personnel.unitType,
-							},
-						},
-						incidentId: incident.id,
-						personnelId: personnel.id,
-					},
-					include: assignmentInclude,
-				});
+							select: dispatchAssignmentSelect,
+						})
+					)
+				);
 
-				await transaction.personnel.update({
+				await transaction.personnel.updateMany({
 					data: { currentStatus: "ASSIGNED" },
-					where: { id: personnel.id },
+					where: { id: { in: uniquePersonnelIds } },
 				});
 				if (incident.status === "VERIFIED") {
 					await transaction.incident.update({
@@ -149,13 +194,13 @@ export const assignmentsRouter = router({
 							changedBy: ctx.session.user.id,
 							fromStatus: "VERIFIED",
 							incidentId: incident.id,
-							note: input.note,
+							note: input.overrideReason ?? input.note,
 							toStatus: "ASSIGNED",
 						},
 					});
 				}
 
-				return assignment;
+				return assignments;
 			})
 		),
 	list: protectedProcedure
@@ -268,7 +313,7 @@ export const assignmentsRouter = router({
 				}
 
 				return transaction.assignment.findUnique({
-					include: assignmentInclude,
+					select: dispatchAssignmentSelect,
 					where: { id: assignment.id },
 				});
 			})

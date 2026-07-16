@@ -49,6 +49,7 @@ export const dashboardRouter = router({
 			resolvedToday,
 			personnelOnDuty,
 			availablePersonnel,
+			responseSamples,
 		] = await Promise.all([
 			ctx.db.incident.count({ where: { status: { not: "RESOLVED" } } }),
 			ctx.db.incident.count({
@@ -58,11 +59,37 @@ export const dashboardRouter = router({
 				where: { currentStatus: { not: "OFFLINE" } },
 			}),
 			ctx.db.personnel.count({ where: { currentStatus: "AVAILABLE" } }),
+			ctx.db.incident.findMany({
+				select: {
+					createdAt: true,
+					statusLogs: {
+						orderBy: { changedAt: "asc" },
+						select: { changedAt: true },
+						take: 1,
+						where: { toStatus: "ON_SCENE" },
+					},
+				},
+				where: { statusLogs: { some: { toStatus: "ON_SCENE" } } },
+			}),
 		]);
+		const responseMinutes = responseSamples.flatMap((incident) => {
+			const onSceneAt = incident.statusLogs[0]?.changedAt;
+			return onSceneAt
+				? [(onSceneAt.getTime() - incident.createdAt.getTime()) / 60_000]
+				: [];
+		});
+		const averageResponseMinutes = responseMinutes.length
+			? Math.round(
+					(responseMinutes.reduce((sum, minutes) => sum + minutes, 0) /
+						responseMinutes.length) *
+						10
+				) / 10
+			: null;
 
 		return {
 			activeIncidents,
 			availablePersonnel,
+			averageResponseMinutes,
 			personnelOnDuty,
 			resolvedToday,
 		};

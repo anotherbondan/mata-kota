@@ -22,10 +22,10 @@ export default function RootLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<html lang="en" suppressHydrationWarning>
+		<html lang="id" suppressHydrationWarning>
 			<body className={`${poppins.variable} antialiased`}>
 				<Providers>
-					<div className="grid h-svh grid-rows-[auto_1fr]">
+					<div className="min-h-svh bg-slate-50">
 						<Header />
 						{children}
 					</div>

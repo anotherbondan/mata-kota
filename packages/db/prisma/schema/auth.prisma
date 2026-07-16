@@ -11,6 +11,7 @@ model User {
   accounts      Account[]
   policeOfficer PoliceOfficer?
   statusLogs    IncidentStatusLog[]
+  assignments   Assignment[]        @relation("AssignmentCreator")
 
   @@unique([email])
   @@map("user")

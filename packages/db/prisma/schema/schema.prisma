@@ -223,10 +223,13 @@ model Assignment {
   onSceneAt            DateTime?
   resolvedAt           DateTime?
   dispatchCardSnapshot Json
+  assignedBy           String?
+  assignedByUser       User?     @relation("AssignmentCreator", fields: [assignedBy], references: [id], onDelete: Restrict)
 
   @@index([incidentId])
   @@index([personnelId])
   @@index([assignedAt])
+  @@index([assignedBy])
   @@map("assignments")
 }
 

@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { protectedProcedure, router, supervisorProcedure } from "../index";
+import { haversineDistanceKm } from "../lib/geo";
 import { idSchema, paginationSchema, personnelStatusSchema } from "../schemas";
 
 export const personnelRouter = router({
@@ -121,6 +122,83 @@ export const personnelRouter = router({
 			const nextItem = items.length > limit ? items.pop() : undefined;
 
 			return { items, nextCursor: nextItem?.id ?? null };
+		}),
+	nearest: protectedProcedure
+		.input(
+			z.object({
+				incidentId: idSchema,
+				limit: z.number().int().min(1).max(100).default(50),
+				search: z.string().trim().max(100).optional(),
+			})
+		)
+		.query(async ({ ctx, input }) => {
+			const incident = await ctx.db.incident.findUnique({
+				select: { id: true, lat: true, lng: true },
+				where: { id: input.incidentId },
+			});
+			if (!incident) {
+				throw new TRPCError({
+					code: "NOT_FOUND",
+					message: "Incident not found",
+				});
+			}
+
+			const personnel = await ctx.db.personnel.findMany({
+				include: {
+					_count: { select: { assignments: true } },
+					bwcDevice: true,
+				},
+				take: input.limit,
+				where: {
+					currentStatus: { not: "OFFLINE" },
+					...(input.search
+						? {
+								OR: [
+									{
+										badgeNo: {
+											contains: input.search,
+											mode: "insensitive" as const,
+										},
+									},
+									{
+										name: {
+											contains: input.search,
+											mode: "insensitive" as const,
+										},
+									},
+								],
+							}
+						: {}),
+				},
+			});
+			const staleBefore = Date.now() - 5 * 60_000;
+
+			return personnel
+				.map((officer) => {
+					const { lastLat, lastLng, lastPingAt } = officer.bwcDevice ?? {};
+					const distanceKm =
+						typeof lastLat === "number" && typeof lastLng === "number"
+							? haversineDistanceKm(
+									{ lat: incident.lat, lng: incident.lng },
+									{ lat: lastLat, lng: lastLng }
+								)
+							: null;
+
+					return {
+						...officer,
+						distanceKm,
+						isLocationStale: !lastPingAt || lastPingAt.getTime() < staleBefore,
+					};
+				})
+				.sort((left, right) => {
+					if (left.distanceKm === null) {
+						return 1;
+					}
+					if (right.distanceKm === null) {
+						return -1;
+					}
+					return left.distanceKm - right.distanceKm;
+				});
 		}),
 	update: supervisorProcedure
 		.input(
