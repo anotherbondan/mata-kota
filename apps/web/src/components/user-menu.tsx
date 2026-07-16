@@ -1,3 +1,4 @@
+import { authEmailToNrp } from "@mata-kota/auth/nrp";
 import { Button } from "@mata-kota/ui/components/button";
 import {
 	DropdownMenu,
@@ -35,21 +36,33 @@ export default function UserMenu() {
 	if (!session) {
 		return (
 			<Link href="/login">
-				<Button variant="outline">Sign In</Button>
+				<Button variant="tertiary">Sign In</Button>
 			</Link>
 		);
 	}
 
+	const nrp = authEmailToNrp(session.user.email);
+
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger render={<Button variant="outline" />}>
-				{session.user.name}
+			<DropdownMenuTrigger
+				render={
+					<button
+						className="flex items-center gap-3 outline-none cursor-pointer hover:opacity-90 transition-opacity"
+						type="button"
+					/>
+				}
+			>
+				<span className="text-[#f59e0b] font-semibold text-[15px]">
+					Hi, {session.user.name?.split(" ")[0] || "User"}!
+				</span>
+				<div className="h-10 w-10 rounded-full bg-[#ff8a8a] shadow-sm flex-shrink-0" />
 			</DropdownMenuTrigger>
 			<DropdownMenuContent className="bg-card">
 				<DropdownMenuGroup>
 					<DropdownMenuLabel>My Account</DropdownMenuLabel>
 					<DropdownMenuSeparator />
-					<DropdownMenuItem>{session.user.email}</DropdownMenuItem>
+					<DropdownMenuItem>NRP: {nrp ?? "Unavailable"}</DropdownMenuItem>
 					<DropdownMenuItem onClick={handleSignOut} variant="destructive">
 						Sign Out
 					</DropdownMenuItem>

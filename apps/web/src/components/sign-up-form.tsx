@@ -1,3 +1,8 @@
+import {
+	isValidNrp,
+	NRP_ERROR_MESSAGE,
+	nrpToAuthEmail,
+} from "@mata-kota/auth/nrp";
 import { Button } from "@mata-kota/ui/components/button";
 import { Input } from "@mata-kota/ui/components/input";
 import { Label } from "@mata-kota/ui/components/label";
@@ -28,14 +33,14 @@ export default function SignUpForm({
 
 	const form = useForm({
 		defaultValues: {
-			email: "",
 			name: "",
+			nrp: "",
 			password: "",
 		},
 		onSubmit: async ({ value }) => {
 			await authClient.signUp.email(
 				{
-					email: value.email,
+					email: nrpToAuthEmail(value.nrp),
 					name: value.name,
 					password: value.password,
 				},
@@ -52,8 +57,8 @@ export default function SignUpForm({
 		},
 		validators: {
 			onSubmit: z.object({
-				email: z.email("Invalid email address"),
 				name: z.string().min(2, "Name must be at least 2 characters"),
+				nrp: z.string().refine(isValidNrp, NRP_ERROR_MESSAGE),
 				password: z.string().min(8, "Password must be at least 8 characters"),
 			}),
 		},
@@ -78,6 +83,7 @@ export default function SignUpForm({
 							<div className="flex flex-col gap-2">
 								<Label htmlFor={field.name}>Name</Label>
 								<Input
+									autoComplete="name"
 									id={field.name}
 									name={field.name}
 									onBlur={field.handleBlur}
@@ -95,16 +101,20 @@ export default function SignUpForm({
 				</div>
 
 				<div>
-					<form.Field name="email">
+					<form.Field name="nrp">
 						{(field) => (
 							<div className="flex flex-col gap-2">
-								<Label htmlFor={field.name}>Email</Label>
+								<Label htmlFor={field.name}>NRP</Label>
 								<Input
+									autoComplete="username"
 									id={field.name}
+									inputMode="numeric"
+									maxLength={8}
 									name={field.name}
 									onBlur={field.handleBlur}
 									onChange={(e) => field.handleChange(e.target.value)}
-									type="email"
+									pattern="[0-9]{8}"
+									type="text"
 									value={field.state.value}
 								/>
 								{field.state.meta.errors.map((error) => (
@@ -123,6 +133,7 @@ export default function SignUpForm({
 							<div className="flex flex-col gap-2">
 								<Label htmlFor={field.name}>Password</Label>
 								<Input
+									autoComplete="new-password"
 									id={field.name}
 									name={field.name}
 									onBlur={field.handleBlur}
@@ -154,7 +165,7 @@ export default function SignUpForm({
 			</form>
 
 			<div className="mt-5 text-center">
-				<Button onClick={onSwitchToSignIn} variant="link">
+				<Button onClick={onSwitchToSignIn} variant="ghost">
 					Already have an account? Sign In
 				</Button>
 			</div>

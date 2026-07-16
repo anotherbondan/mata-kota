@@ -1,3 +1,8 @@
+import {
+	isValidNrp,
+	NRP_ERROR_MESSAGE,
+	nrpToAuthEmail,
+} from "@mata-kota/auth/nrp";
 import { Button } from "@mata-kota/ui/components/button";
 import { Input } from "@mata-kota/ui/components/input";
 import { Label } from "@mata-kota/ui/components/label";
@@ -28,13 +33,13 @@ export default function SignInForm({
 
 	const form = useForm({
 		defaultValues: {
-			email: "",
+			nrp: "",
 			password: "",
 		},
 		onSubmit: async ({ value }) => {
 			await authClient.signIn.email(
 				{
-					email: value.email,
+					email: nrpToAuthEmail(value.nrp),
 					password: value.password,
 				},
 				{
@@ -50,7 +55,7 @@ export default function SignInForm({
 		},
 		validators: {
 			onSubmit: z.object({
-				email: z.email("Invalid email address"),
+				nrp: z.string().refine(isValidNrp, NRP_ERROR_MESSAGE),
 				password: z.string().min(8, "Password must be at least 8 characters"),
 			}),
 		},
@@ -70,16 +75,26 @@ export default function SignInForm({
 		<div className="w-full">
 			<form className="flex flex-col gap-4" onSubmit={handleSubmit}>
 				<div>
-					<form.Field name="email">
+					<form.Field name="nrp">
 						{(field) => (
 							<div className="flex flex-col gap-2">
-								<Label htmlFor={field.name}>Email</Label>
+								<Label
+									className="font-semibold text-primary-500"
+									htmlFor={field.name}
+								>
+									NRP <span className="text-red-500">*</span>
+								</Label>
 								<Input
+									autoComplete="username"
 									id={field.name}
+									inputMode="numeric"
+									maxLength={8}
 									name={field.name}
 									onBlur={field.handleBlur}
 									onChange={(e) => field.handleChange(e.target.value)}
-									type="email"
+									pattern="[0-9]{8}"
+									placeholder="Type here"
+									type="text"
 									value={field.state.value}
 								/>
 								{field.state.meta.errors.map((error) => (
@@ -96,12 +111,19 @@ export default function SignInForm({
 					<form.Field name="password">
 						{(field) => (
 							<div className="flex flex-col gap-2">
-								<Label htmlFor={field.name}>Password</Label>
+								<Label
+									className="font-semibold text-primary-500"
+									htmlFor={field.name}
+								>
+									Password <span className="text-red-500">*</span>
+								</Label>
 								<Input
+									autoComplete="current-password"
 									id={field.name}
 									name={field.name}
 									onBlur={field.handleBlur}
 									onChange={(e) => field.handleChange(e.target.value)}
+									placeholder="Type here"
 									type="password"
 									value={field.state.value}
 								/>
@@ -118,20 +140,25 @@ export default function SignInForm({
 				<form.Subscribe selector={selectSubmitState}>
 					{({ canSubmit, isSubmitting }) => (
 						<Button
-							className="w-full"
+							className="w-full mt-2 h-12 text-base"
 							disabled={!canSubmit || isSubmitting}
 							type="submit"
 						>
-							{isSubmitting ? "Submitting..." : "Sign In"}
+							{isSubmitting ? "Logging in..." : "Login"}
 						</Button>
 					)}
 				</form.Subscribe>
 			</form>
 
-			<div className="mt-5 text-center">
-				<Button onClick={onSwitchToSignUp} variant="link">
-					Need an account? Sign Up
-				</Button>
+			<div className="mt-8 text-center text-primary-500 font-medium">
+				Belum punya akun?{" "}
+				<button
+					className="text-secondary-500 hover:underline"
+					onClick={onSwitchToSignUp}
+					type="button"
+				>
+					Daftar
+				</button>
 			</div>
 		</div>
 	);

@@ -1,0 +1,9 @@
+README.md
+pyproject.toml
+app/__init__.py
+app/main.py
+mata_kota_ai.egg-info/PKG-INFO
+mata_kota_ai.egg-info/SOURCES.txt
+mata_kota_ai.egg-info/dependency_links.txt
+mata_kota_ai.egg-info/requires.txt
+mata_kota_ai.egg-info/top_level.txt

@@ -90,7 +90,7 @@ function MessageScrollerButton({
 	children,
 	render,
 	variant = "secondary",
-	size = "icon-sm",
+	size = "small",
 	...props
 }: React.ComponentProps<typeof MessageScrollerPrimitive.Button> &
 	Pick<React.ComponentProps<typeof Button>, "variant" | "size">) {
