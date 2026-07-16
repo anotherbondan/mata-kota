@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChevronRight, Clock, MapPin, Plus } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -23,6 +23,7 @@ import CreateIncidentDialog from "./create-incident-dialog";
 const POLLING_INTERVAL = 10_000;
 
 export default function DashboardPage() {
+	const queryClient = useQueryClient();
 	useMockOperationalFeed();
 	const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(
 		null
@@ -50,6 +51,14 @@ export default function DashboardPage() {
 		...trpc.assignments.list.queryOptions({ limit: 5 }),
 		refetchInterval: POLLING_INTERVAL,
 	});
+
+	const updateStatus = useMutation(
+		trpc.assignments.updateOperationalStatus.mutationOptions({
+			onSuccess: () => {
+				queryClient.invalidateQueries();
+			},
+		})
+	);
 
 	const stats = [
 		{
@@ -227,13 +236,14 @@ export default function DashboardPage() {
 								<th className="px-4 py-3 font-medium">Personel</th>
 								<th className="px-4 py-3 font-medium">Tingkat Risiko</th>
 								<th className="px-4 py-3 font-medium">Status</th>
-								<th className="px-4 py-3 font-medium rounded-tr-xl">Waktu Respon</th>
+								<th className="px-4 py-3 font-medium">Waktu Respon</th>
+								<th className="px-4 py-3 font-medium rounded-tr-xl text-right">Aksi Personel</th>
 							</tr>
 						</thead>
 						<tbody className="divide-y divide-slate-100">
 							{assignments.isLoading ? (
 								<tr>
-									<td colSpan={5} className="p-4 text-center text-slate-500">Memuat penugasan...</td>
+									<td colSpan={6} className="p-4 text-center text-slate-500">Memuat penugasan...</td>
 								</tr>
 							) : null}
 							{(assignments.data?.items ?? []).map((assignment: any) => {
@@ -255,12 +265,27 @@ export default function DashboardPage() {
 											{assignment.resolvedAt ? "Sudah Ditangani" : statusLabels[assignment.incident.status] ?? "Ditugaskan"}
 										</td>
 										<td className="px-4 py-4 text-slate-600">{responseTime}</td>
+										<td className="px-4 py-4 text-right">
+											{!assignment.resolvedAt && (
+												<button
+													type="button"
+													disabled={updateStatus.isPending}
+													onClick={() => {
+														const nextStatus = assignment.incident.status === "ON_SCENE" ? "RESOLVED" : "ON_SCENE";
+														updateStatus.mutate({ assignmentId: assignment.id, status: nextStatus });
+													}}
+													className="rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-600 hover:bg-emerald-100 disabled:opacity-50 transition-colors"
+												>
+													{assignment.incident.status === "ON_SCENE" ? "Selesaikan" : "Konfirmasi Tiba"}
+												</button>
+											)}
+										</td>
 									</tr>
 								);
 							})}
 							{!assignments.isLoading && (assignments.data?.items?.length ?? 0) === 0 ? (
 								<tr>
-									<td colSpan={5} className="p-4 text-center text-slate-500">Belum ada penugasan</td>
+									<td colSpan={6} className="p-4 text-center text-slate-500">Belum ada penugasan</td>
 								</tr>
 							) : null}
 						</tbody>

@@ -111,7 +111,6 @@ export default function IncidentMap({
 	onSelectRef.current = onSelectIncident;
 	unitsRef.current = units;
 
-	// Use process.env directly with a hardcoded fallback to prevent Next.js bundler cache issues
 	const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
 	// Calculate counts for legend

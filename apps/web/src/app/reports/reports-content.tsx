@@ -16,6 +16,7 @@ import { categoryLabels, formatIncidentTime } from "@/lib/incident-display";
 import { trpc } from "@/utils/trpc";
 
 import ConvertDialog from "./convert-dialog";
+import CreateReportDialog from "./create-report-dialog";
 
 const CATEGORY_OPTIONS = Object.entries(categoryLabels) as [string, string][];
 
@@ -39,6 +40,7 @@ export default function ReportsContent() {
 		category: string;
 		description: string;
 	} | null>(null);
+	const [isCreateOpen, setIsCreateOpen] = useState(false);
 
 	const reports = useQuery(
 		trpc.reports.list.queryOptions({
@@ -85,6 +87,14 @@ export default function ReportsContent() {
 					</p>
 				</div>
 				<div className="flex items-center gap-3">
+					<button
+						className="flex h-10 items-center gap-2 rounded-xl bg-slate-800 px-4 text-sm font-semibold text-white shadow-sm transition-all hover:bg-slate-900 hover:shadow-md"
+						onClick={() => setIsCreateOpen(true)}
+						type="button"
+					>
+						<Plus className="size-4" />
+						Buat Laporan
+					</button>
 					<button
 						className="flex h-10 items-center gap-2 rounded-xl bg-amber-500 px-4 text-sm font-semibold text-white shadow-sm transition-all hover:bg-amber-600 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
 						disabled={simulateMutation.isPending}
@@ -203,9 +213,14 @@ export default function ReportsContent() {
 
 			{/* Convert dialog */}
 			<ConvertDialog
-				isOpen={convertTarget !== null}
+				isOpen={!!convertTarget}
 				onClose={() => setConvertTarget(null)}
 				report={convertTarget}
+			/>
+
+			<CreateReportDialog
+				isOpen={isCreateOpen}
+				onClose={() => setIsCreateOpen(false)}
 			/>
 		</main>
 	);

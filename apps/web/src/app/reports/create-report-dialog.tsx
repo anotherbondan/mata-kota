@@ -4,30 +4,30 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, MapPin, Navigation, Plus, X } from "lucide-react";
 import { useState } from "react";
 
-import { categoryLabels, severityLabels } from "@/lib/incident-display";
+import { categoryLabels } from "@/lib/incident-display";
 import { trpc } from "@/utils/trpc";
 
-interface CreateIncidentDialogProps {
+interface CreateReportDialogProps {
 	isOpen: boolean;
 	onClose: () => void;
 }
 
 const CATEGORIES = Object.keys(categoryLabels);
-const SEVERITIES = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
 
-export default function CreateIncidentDialog({
+export default function CreateReportDialog({
 	isOpen,
 	onClose,
-}: CreateIncidentDialogProps) {
+}: CreateReportDialogProps) {
 	const queryClient = useQueryClient();
 	const [category, setCategory] = useState("CROWD");
-	const [severity, setSeverity] = useState("LOW");
+	const [description, setDescription] = useState("");
+	const [reporterRef, setReporterRef] = useState("");
 	const [lat, setLat] = useState("-6.1751");
 	const [lng, setLng] = useState("106.8272");
 	const [isLocating, setIsLocating] = useState(false);
 
 	const createMutation = useMutation(
-		trpc.incidents.create.mutationOptions({
+		trpc.reports.create.mutationOptions({
 			onSuccess: () => {
 				queryClient.invalidateQueries();
 				resetForm();
@@ -38,7 +38,8 @@ export default function CreateIncidentDialog({
 
 	function resetForm() {
 		setCategory("CROWD");
-		setSeverity("LOW");
+		setDescription("");
+		setReporterRef("");
 		setLat("-6.1751");
 		setLng("106.8272");
 	}
@@ -47,14 +48,16 @@ export default function CreateIncidentDialog({
 		event.preventDefault();
 		const parsedLat = Number.parseFloat(lat);
 		const parsedLng = Number.parseFloat(lng);
-		if (Number.isNaN(parsedLat) || Number.isNaN(parsedLng)) {
+		if (Number.isNaN(parsedLat) || Number.isNaN(parsedLng) || !description) {
 			return;
 		}
+		
 		createMutation.mutate({
-			category: category as any,
+			category,
+			description,
 			lat: parsedLat,
 			lng: parsedLng,
-			severity: severity as any,
+			reporterRef: reporterRef || undefined,
 		});
 	}
 
@@ -81,22 +84,19 @@ export default function CreateIncidentDialog({
 
 	return (
 		<div className="fixed inset-0 z-50 flex items-center justify-center">
-			{/* Backdrop */}
 			<div
 				className="absolute inset-0 bg-black/40 backdrop-blur-sm"
 				onClick={onClose}
 			/>
 
-			{/* Modal */}
 			<div className="relative mx-4 w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl animate-in zoom-in-95 fade-in duration-200">
-				{/* Header */}
 				<div className="flex items-center justify-between mb-6">
 					<div className="flex items-center gap-3">
 						<div className="grid size-10 place-items-center rounded-full bg-primary-100 text-primary-600">
 							<Plus className="size-5" />
 						</div>
 						<h2 className="text-lg font-bold text-slate-800">
-							Buat Insiden Baru
+							Buat Laporan Manual
 						</h2>
 					</div>
 					<button
@@ -109,7 +109,6 @@ export default function CreateIncidentDialog({
 				</div>
 
 				<form className="space-y-5" onSubmit={handleSubmit}>
-					{/* Category */}
 					<div>
 						<label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
 							Kategori
@@ -121,42 +120,38 @@ export default function CreateIncidentDialog({
 						>
 							{CATEGORIES.map((cat) => (
 								<option key={cat} value={cat}>
-									{categoryLabels[cat]}
+									{categoryLabels[cat] || cat}
 								</option>
 							))}
 						</select>
 					</div>
 
-					{/* Severity */}
 					<div>
 						<label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
-							Tingkat Keparahan
+							Deskripsi
 						</label>
-						<div className="grid grid-cols-4 gap-2">
-							{SEVERITIES.map((sev) => (
-								<button
-									className={`h-10 rounded-xl text-xs font-bold transition-all ${
-										severity === sev
-											? sev === "CRITICAL"
-												? "bg-red-600 text-white shadow-md"
-												: sev === "HIGH"
-													? "bg-orange-500 text-white shadow-md"
-													: sev === "MEDIUM"
-														? "bg-amber-500 text-white shadow-md"
-														: "bg-emerald-500 text-white shadow-md"
-											: "bg-slate-100 text-slate-600 hover:bg-slate-200"
-									}`}
-									key={sev}
-									onClick={() => setSeverity(sev)}
-									type="button"
-								>
-									{severityLabels[sev]}
-								</button>
-							))}
-						</div>
+						<textarea
+							required
+							className="w-full h-24 rounded-xl border border-slate-200 bg-white p-3 text-sm focus:border-primary-500 focus:ring-1 focus:ring-primary-500/20 outline-none resize-none"
+							onChange={(e) => setDescription(e.target.value)}
+							placeholder="Jelaskan detail laporan secara lengkap..."
+							value={description}
+						/>
 					</div>
 
-					{/* Location */}
+					<div>
+						<label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
+							Referensi Pelapor (Opsional)
+						</label>
+						<input
+							className="w-full h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm focus:border-primary-500 focus:ring-1 focus:ring-primary-500/20 outline-none"
+							onChange={(e) => setReporterRef(e.target.value)}
+							placeholder="Misal: Nama, No Telp, atau ID Radio"
+							type="text"
+							value={reporterRef}
+						/>
+					</div>
+
 					<div>
 						<div className="flex items-center justify-between mb-2">
 							<label className="flex items-center gap-1.5 text-xs font-bold text-slate-600 uppercase tracking-wider">
@@ -205,14 +200,12 @@ export default function CreateIncidentDialog({
 						</div>
 					</div>
 
-					{/* Error */}
 					{createMutation.isError ? (
 						<p className="rounded-xl bg-red-50 px-4 py-3 text-xs font-medium text-red-600">
-							Gagal membuat insiden. Silakan coba lagi.
+							Gagal membuat laporan: {createMutation.error?.message}
 						</p>
 					) : null}
 
-					{/* Submit */}
 					<button
 						className="w-full h-12 rounded-2xl bg-gradient-to-r from-slate-800 to-slate-900 text-sm font-bold text-white shadow-lg hover:shadow-xl hover:from-slate-700 hover:to-slate-800 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
 						disabled={createMutation.isPending}
@@ -220,7 +213,7 @@ export default function CreateIncidentDialog({
 					>
 						{createMutation.isPending
 							? "Membuat..."
-							: "Buat Insiden"}
+							: "Buat Laporan"}
 					</button>
 				</form>
 			</div>
