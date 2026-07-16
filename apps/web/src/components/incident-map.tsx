@@ -112,7 +112,7 @@ export default function IncidentMap({
 	unitsRef.current = units;
 
 	// Use process.env directly with a hardcoded fallback to prevent Next.js bundler cache issues
-	const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || "pk.eyJ1IjoiYW5vdGhlcmJvbmRhbiIsImEiOiJjbXJueDZ5aHgzYmVyMnhwZHV4ajAzbHhmIn0.IiHFvbPiWKwgNyz8enM77w";
+	const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
 
 	// Calculate counts for legend
 	const criticalCount = incidents.filter(
