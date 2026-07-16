@@ -87,7 +87,7 @@ function DropdownMenuItem({
 	return (
 		<MenuPrimitive.Item
 			className={cn(
-				"group/dropdown-menu-item relative flex cursor-default select-none items-center gap-2 rounded-lg px-2.5 py-2 text-sm outline-hidden focus:bg-slate-100 focus:text-slate-900 not-data-[variant=destructive]:focus:**:text-slate-900 data-disabled:pointer-events-none data-inset:pl-7 data-[variant=destructive]:text-red-500 data-disabled:opacity-50 data-[variant=destructive]:focus:bg-red-500/10 data-[variant=destructive]:focus:text-red-600 dark:data-[variant=destructive]:focus:bg-red-500/20 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 data-[variant=destructive]:*:[svg]:text-red-500 transition-colors",
+				"group/dropdown-menu-item relative flex cursor-default select-none items-center gap-2 rounded-lg px-2.5 py-2 text-sm outline-hidden focus:bg-slate-100 focus:text-slate-900 not-data-[variant=destructive]:focus:**:text-slate-900 data-disabled:pointer-events-none data-inset:pl-7 data-[variant=destructive]:text-red-500 data-disabled:opacity-50 data-[variant=destructive]:focus:bg-red-500/10 data-[variant=destructive]:focus:text-red-600 [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0 data-[variant=destructive]:*:[svg]:text-red-500 transition-colors",
 				className
 			)}
 			data-inset={inset}
