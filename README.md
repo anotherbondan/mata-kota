@@ -14,7 +14,7 @@ This project was created with [Better-T-Stack](https://github.com/AmanVarshney01
 - **Authentication** - Better-Auth
 - **Maps and geospatial UI** - Mapbox GL JS, Deck.gl, and Turf.js
 - **Charts** - Apache ECharts
-- **Realtime and jobs** - Socket.IO and BullMQ
+- **Realtime updates** - Socket.IO direct server events
 - **Media and reports** - Cloudinary and pdf-lib
 - **AI service boundary** - FastAPI scaffold for severity classification and incident summaries
 - **Biome** - Linting and formatting

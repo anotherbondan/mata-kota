@@ -18,7 +18,6 @@ export const env = createEnv({
 		NODE_ENV: z
 			.enum(["development", "production", "test"])
 			.default("development"),
-		REDIS_URL: z.url().optional(),
 		SOCKET_IO_PATH: z.string().default("/api/socket"),
 	},
 	skipValidation: !!process.env.SKIP_ENV_VALIDATION,
