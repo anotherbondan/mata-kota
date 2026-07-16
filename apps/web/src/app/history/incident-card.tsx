@@ -2,6 +2,7 @@
 
 import { ChevronDown, ChevronUp, Clock, Lightbulb, MapPin, User } from "lucide-react";
 import { useState } from "react";
+import { AssignPersonnelModal } from "./assign-personnel-modal";
 
 interface IncidentCardProps {
 	incident: {
@@ -15,6 +16,7 @@ interface IncidentCardProps {
 
 export function IncidentCard({ incident }: IncidentCardProps) {
 	const [isExpanded, setIsExpanded] = useState(false);
+	const [isModalOpen, setIsModalOpen] = useState(false);
 
 	return (
 		<div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition-shadow flex flex-col">
@@ -104,7 +106,10 @@ export function IncidentCard({ incident }: IncidentCardProps) {
 
 					{/* Assign Personnel Action */}
 					<div className="flex justify-end pt-2">
-						<button className="rounded-full bg-[#1e293b] text-white px-6 py-2.5 text-sm font-bold hover:bg-slate-800 transition-colors shadow-sm">
+						<button 
+							onClick={() => setIsModalOpen(true)}
+							className="rounded-full bg-[#1e293b] text-white px-6 py-2.5 text-sm font-bold hover:bg-slate-800 transition-colors shadow-sm"
+						>
 							Tugaskan Personel
 						</button>
 					</div>
@@ -125,6 +130,11 @@ export function IncidentCard({ incident }: IncidentCardProps) {
 					)}
 				</button>
 			</div>
+
+			<AssignPersonnelModal 
+				isOpen={isModalOpen} 
+				onClose={() => setIsModalOpen(false)} 
+			/>
 		</div>
 	);
 }
