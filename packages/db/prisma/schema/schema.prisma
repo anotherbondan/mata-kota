@@ -1,9 +1,262 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../generated"
+  provider     = "prisma-client"
+  output       = "../generated"
   moduleFormat = "esm"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+enum UserRole {
+  OPERATOR
+  SUPERVISOR
+}
+
+enum PersonnelStatus {
+  AVAILABLE
+  ASSIGNED
+  EN_ROUTE
+  ON_SCENE
+  OFFLINE
+}
+
+enum BwcConnectionStatus {
+  LIVE
+  STALE
+  OFFLINE
+}
+
+enum ReportSource {
+  SUPERAPP_POLRI
+}
+
+enum CvDetectedCategory {
+  CROWD
+  ALTERCATION
+  SUSPICIOUS_VEHICLE
+  THEFT
+  TRAFFIC_INCIDENT
+  OTHER
+}
+
+enum IncidentCategory {
+  CROWD
+  ALTERCATION
+  SUSPICIOUS_VEHICLE
+  THEFT
+  TRAFFIC_INCIDENT
+  OTHER
+}
+
+enum Severity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IncidentStatus {
+  REPORTED
+  VERIFIED
+  ASSIGNED
+  EN_ROUTE
+  ON_SCENE
+  RESOLVED
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  VERIFIED
+  FALSE_REPORT
+}
+
+enum IncidentSourceType {
+  REPORT
+  CV_EVENT
+}
+
+enum EvidenceType {
+  PHOTO
+  VIDEO
+  TEXT
+}
+
+model Personnel {
+  id            String            @id @default(cuid())
+  name          String
+  badgeNo       String            @unique
+  unitType      String
+  currentStatus PersonnelStatus   @default(AVAILABLE)
+  updatedAt     DateTime          @updatedAt
+  bwcDevice     BwcDevice?
+  assignments   Assignment[]
+  trainingClips BwcTrainingClip[]
+
+  @@index([currentStatus])
+  @@map("personnel")
+}
+
+model BwcDevice {
+  id               String              @id @default(cuid())
+  personnelId      String              @unique
+  personnel        Personnel           @relation(fields: [personnelId], references: [id], onDelete: Cascade)
+  deviceCode       String              @unique
+  lastLat          Float?
+  lastLng          Float?
+  lastPingAt       DateTime?
+  connectionStatus BwcConnectionStatus @default(OFFLINE)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  @@index([connectionStatus])
+  @@index([lastPingAt])
+  @@map("bwc_devices")
+}
+
+model Report {
+  id          String       @id @default(cuid())
+  source      ReportSource @default(SUPERAPP_POLRI)
+  reporterRef String?
+  category    String
+  description String
+  lat         Float
+  lng         Float
+  mediaUrl    String?
+  reportedAt  DateTime
+  evidence    Evidence[]
+
+  @@index([reportedAt])
+  @@index([lat, lng])
+  @@map("reports")
+}
+
+model CvEvent {
+  id               String             @id @default(cuid())
+  cameraId         String
+  detectedCategory CvDetectedCategory
+  confidenceScore  Float
+  lat              Float
+  lng              Float
+  detectedAt       DateTime
+
+  @@index([cameraId])
+  @@index([detectedAt])
+  @@index([lat, lng])
+  @@map("cv_events")
+}
+
+model Incident {
+  id                 String              @id @default(cuid())
+  category           IncidentCategory
+  severity           Severity            @default(LOW)
+  status             IncidentStatus      @default(REPORTED)
+  verificationStatus VerificationStatus  @default(UNVERIFIED)
+  lat                Float
+  lng                Float
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  sources            IncidentSource[]
+  aiSummaries        AiSummary[]
+  evidence           Evidence[]
+  assignments        Assignment[]
+  statusLogs         IncidentStatusLog[]
+
+  @@index([status])
+  @@index([severity])
+  @@index([category])
+  @@index([createdAt])
+  @@index([lat, lng])
+  @@map("incidents")
+}
+
+model IncidentSource {
+  id         String             @id @default(cuid())
+  incidentId String
+  incident   Incident           @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  sourceType IncidentSourceType
+  sourceId   String
+  matchedAt  DateTime           @default(now())
+
+  @@unique([incidentId, sourceType, sourceId])
+  @@index([sourceType, sourceId])
+  @@map("incident_sources")
+}
+
+model AiSummary {
+  id             String   @id @default(cuid())
+  incidentId     String
+  incident       Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  summaryText    String
+  citedSourceIds String[]
+  modelVersion   String
+  generatedAt    DateTime @default(now())
+
+  @@index([incidentId, generatedAt])
+  @@map("ai_summaries")
+}
+
+model Evidence {
+  id             String       @id @default(cuid())
+  incidentId     String
+  incident       Incident     @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  type           EvidenceType
+  url            String?
+  textSnippet    String?
+  sourceReportId String?
+  sourceReport   Report?      @relation(fields: [sourceReportId], references: [id], onDelete: SetNull)
+  createdAt      DateTime     @default(now())
+
+  @@index([incidentId])
+  @@index([sourceReportId])
+  @@map("evidence")
+}
+
+model Assignment {
+  id                   String    @id @default(cuid())
+  incidentId           String
+  incident             Incident  @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  personnelId          String
+  personnel            Personnel @relation(fields: [personnelId], references: [id], onDelete: Restrict)
+  assignedAt           DateTime  @default(now())
+  confirmedEnRouteAt   DateTime?
+  onSceneAt            DateTime?
+  resolvedAt           DateTime?
+  dispatchCardSnapshot Json
+
+  @@index([incidentId])
+  @@index([personnelId])
+  @@index([assignedAt])
+  @@map("assignments")
+}
+
+model IncidentStatusLog {
+  id         String          @id @default(cuid())
+  incidentId String
+  incident   Incident        @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  fromStatus IncidentStatus?
+  toStatus   IncidentStatus
+  changedBy  String
+  user       User            @relation(fields: [changedBy], references: [id], onDelete: Restrict)
+  changedAt  DateTime        @default(now())
+  note       String?
+
+  @@index([incidentId, changedAt])
+  @@index([changedBy])
+  @@map("incident_status_log")
+}
+
+model BwcTrainingClip {
+  id                 String     @id @default(cuid())
+  personnelId        String?
+  personnel          Personnel? @relation(fields: [personnelId], references: [id], onDelete: SetNull)
+  recordedAt         DateTime
+  storageRef         String
+  labeledCategory    String?
+  usedInModelVersion String?
+  createdAt          DateTime   @default(now())
+
+  @@index([personnelId])
+  @@index([recordedAt])
+  @@map("bwc_training_clips")
 }

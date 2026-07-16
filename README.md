@@ -10,8 +10,13 @@ This project was created with [Better-T-Stack](https://github.com/AmanVarshney01
 - **Shared UI package** - shadcn/ui primitives live in `packages/ui`
 - **tRPC** - End-to-end type-safe APIs
 - **Prisma** - TypeScript-first ORM
-- **PostgreSQL** - Database engine
+- **PostgreSQL + PostGIS-ready schema** - Database engine for incident, evidence, personnel, BWC, assignment, and audit data
 - **Authentication** - Better-Auth
+- **Maps and geospatial UI** - Mapbox GL JS, Deck.gl, and Turf.js
+- **Charts** - Apache ECharts
+- **Realtime and jobs** - Socket.IO and BullMQ
+- **Media and reports** - Cloudinary and pdf-lib
+- **AI service boundary** - FastAPI scaffold for severity classification and incident summaries
 - **Biome** - Linting and formatting
 - **Husky** - Git hooks for code quality
 - **Turborepo** - Optimized monorepo build system
@@ -26,10 +31,12 @@ pnpm install
 
 ## Database Setup
 
-This project uses PostgreSQL with Prisma.
+This project uses PostgreSQL with Prisma. The MVP schema follows the PRD tables for
+incidents, raw reports, CV events, personnel, BWC devices, assignments, evidence,
+AI summaries, and status audit logs.
 
 1. Make sure you have a PostgreSQL database set up.
-2. Update your `apps/web/.env` file with your PostgreSQL connection details.
+2. Copy `apps/web/.env.example` to `apps/web/.env` and fill in your connection details.
 
 3. Apply the schema to your database:
 
@@ -44,6 +51,21 @@ pnpm run dev
 ```
 
 Open [http://localhost:3001](http://localhost:3001) in your browser to see the fullstack application.
+
+## AI Service
+
+The PRD separates the AI processing engine from the web app. A FastAPI scaffold lives in
+`apps/ai` and exposes a deterministic placeholder endpoint for severity/summary generation.
+
+```bash
+cd apps/ai
+python -m venv .venv
+.venv\Scripts\activate
+pip install -e .
+uvicorn app.main:app --reload --port 8000
+```
+
+Point the web/API layer at it with `AI_SERVICE_URL`.
 
 ## UI Customization
 
@@ -81,7 +103,8 @@ If you want to add app-specific blocks instead of shared primitives, run the sha
 ```
 mata-kota/
 ├── apps/
-│   └── web/         # Fullstack application (Next.js)
+│   ├── web/         # Fullstack application (Next.js)
+│   └── ai/          # FastAPI AI service scaffold
 ├── packages/
 │   ├── ui/          # Shared shadcn/ui components and styles
 │   ├── api/         # API layer / business logic
