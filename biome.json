@@ -8,7 +8,6 @@
   "files": {
     "ignoreUnknown": false,
     "includes": [
-      "**",
       "!**/.next",
       "!**/dist",
       "!**/.turbo",
@@ -16,6 +15,10 @@
       "!**/dev-dist",
       "!**/.zed",
       "!**/.vscode",
+      "!**/.agents",
+      "!**/.claude",
+      "!**/.codex",
+      "!**/.cursor",
       "!**/routeTree.gen.ts",
       "!**/src-tauri",
       "!**/.nuxt",
@@ -43,7 +46,7 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
+      "preset": "recommended",
       "correctness": {
         "useExhaustiveDependencies": "info"
       },
@@ -80,5 +83,9 @@
       "tailwindDirectives": true
     }
   },
-  "extends": ["ultracite/biome/core", "ultracite/biome/react", "ultracite/biome/next"]
+  "extends": [
+    "ultracite/biome/core",
+    "ultracite/biome/react",
+    "ultracite/biome/next"
+  ]
 }
