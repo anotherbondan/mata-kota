@@ -75,7 +75,7 @@ export default function PersonnelContent() {
 
 	return (
 		<main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-			<div className="flex flex-col gap-4 border-slate-200 border-b pb-5 lg:flex-row lg:items-end lg:justify-between">
+			<div className="flex flex-col gap-4 border-slate-200 border-b pb-5 lg:flex-row lg:justify-between lg:items-center">
 				<div className="flex justify-between items-center w-full">
 					<div>
 						<h1 className="text-2xl font-bold text-slate-900">
@@ -86,7 +86,7 @@ export default function PersonnelContent() {
 						</p>
 					</div>
 					<button
-						className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-2 text-sm font-bold text-white shadow-md hover:shadow-lg hover:from-blue-700 hover:to-blue-800 active:scale-[0.97] transition-all"
+						className="flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2 text-sm font-bold text-white shadow-md hover:shadow-lg hover:from-blue-700 hover:to-blue-800 active:scale-[0.97] transition-all"
 						onClick={() => setIsSyncModalOpen(true)}
 						type="button"
 					>
@@ -94,7 +94,7 @@ export default function PersonnelContent() {
 						Sinkronisasi SDM
 					</button>
 				</div>
-				<div className="grid gap-2 sm:grid-cols-[minmax(220px,1fr)_160px_160px]">
+				<div className="grid gap-2 sm:grid-cols-[minmax(220px,1fr)_160px_160px] ">
 					<div className="relative">
 						<Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
 						<input

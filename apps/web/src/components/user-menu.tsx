@@ -56,7 +56,7 @@ export default function UserMenu() {
 				<span className="text-[#f59e0b] font-semibold text-[15px]">
 					Hi, {session.user.name?.split(" ")[0] || "User"}!
 				</span>
-				<div className="h-10 w-10 rounded-full bg-[#ff8a8a] shadow-sm flex-shrink-0" />
+				<div className="h-10 w-10 rounded-full bg-amber-500 shadow-sm shrink-0" />
 			</DropdownMenuTrigger>
 			<DropdownMenuContent className="bg-card">
 				<DropdownMenuGroup>

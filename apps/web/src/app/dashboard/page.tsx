@@ -1,9 +1,9 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ChevronRight, Clock, MapPin, Plus } from "lucide-react";
+import { ChevronRight, Clock, MapPin, Plus, RefreshCcw } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 import IncidentDetailModal from "@/components/incident-detail-modal";
 import IncidentMap from "@/components/incident-map";
@@ -65,6 +65,25 @@ export default function DashboardPage() {
 		})
 	);
 
+	const simulateMutation = useMutation(
+		trpc.reports.simulateFeed.mutationOptions({
+			onSuccess: () => {
+				queryClient.invalidateQueries();
+			},
+		})
+	);
+
+	const compositionData = useMemo(() => {
+		const groups = new Map<string, number>();
+		for (const item of composition.data ?? []) {
+			const label = categoryLabels[item.category] ?? item.category;
+			groups.set(label, (groups.get(label) ?? 0) + item.count);
+		}
+		return Array.from(groups.entries())
+			.map(([category, count]) => ({ category, count }))
+			.sort((a, b) => b.count - a.count);
+	}, [composition.data]);
+
 	const stats = [
 		{
 			label: "Insiden Aktif",
@@ -100,12 +119,13 @@ export default function DashboardPage() {
 					</p>
 				</div>
 				<button
-					className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-slate-800 to-slate-900 px-5 py-2.5 text-sm font-bold text-white shadow-lg hover:shadow-xl hover:from-slate-700 hover:to-slate-800 active:scale-[0.97] transition-all"
-					onClick={() => setIsCreateOpen(true)}
+					className="flex h-10 items-center gap-2 rounded-xl bg-amber-500 px-4 text-sm font-semibold text-white shadow-sm transition-all hover:bg-amber-600 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+					disabled={simulateMutation.isPending}
+					onClick={() => simulateMutation.mutate()}
 					type="button"
 				>
-					<Plus className="size-4" />
-					Buat Insiden
+					<RefreshCcw className={`size-4 ${simulateMutation.isPending ? "animate-spin" : ""}`} />
+					Sinkronisasi
 				</button>
 			</div>
 
@@ -177,7 +197,7 @@ export default function DashboardPage() {
 										{categoryLabels[incident.category] ?? incident.category}
 									</p>
 									<span
-										className={`px-2 py-1 text-[11px] font-semibold ${severityStyles[incident.severity]}`}
+										className={`px-2 py-1 text-[11px] font-semibold rounded-full ${severityStyles[incident.severity]}`}
 									>
 										{severityLabels[incident.severity] ?? incident.severity}
 									</span>
@@ -217,12 +237,7 @@ export default function DashboardPage() {
 						</h2>
 					</div>
 					<div className="h-[300px]">
-						<CompositionChart
-							data={(composition.data ?? []).map((item) => ({
-								category: categoryLabels[item.category] ?? item.category,
-								count: item.count,
-							}))}
-						/>
+						<CompositionChart data={compositionData} />
 					</div>
 				</div>
 			</section>

@@ -213,58 +213,80 @@ export const reportsRouter = router({
 		}),
 	simulateFeed: operatorProcedure.mutation(async ({ ctx }) => {
 		const result = await ctx.db.$transaction(async (transaction) => {
-			const minuteBucket = Math.floor(Date.now() / 60_000);
-			const reporterRef = `MOCK-FEED-${minuteBucket}`;
-			const existing = await transaction.report.findFirst({
-				select: { id: true },
-				where: { reporterRef },
-			});
-			if (existing) {
-				const source = await transaction.incidentSource.findFirst({
-					select: { incidentId: true },
-					where: { sourceId: existing.id, sourceType: "REPORT" },
-				});
-				return { created: false, incidentId: source?.incidentId ?? null };
-			}
+			const randomId = Math.floor(Math.random() * 1000000);
+			const reporterRef = `MOCK-FEED-${Date.now()}-${randomId}`;
 
 			const scenarios = [
 				{
 					category: "THEFT" as const,
-					description:
-						"Laporan warga mengenai dugaan pencurian di area pertokoan.",
-					lat: -6.1751,
-					lng: 106.8272,
+					description: "Laporan warga mengenai dugaan pencurian di area pertokoan.",
 					severity: "HIGH" as const,
 				},
 				{
+					category: "THEFT" as const,
+					description: "Pencurian kendaraan bermotor terekam CCTV warga.",
+					severity: "CRITICAL" as const,
+				},
+				{
 					category: "ALTERCATION" as const,
-					description: "Keributan kelompok terpantau di ruang publik.",
-					lat: -6.2088,
-					lng: 106.8456,
+					description: "Keributan kelompok pemuda terpantau di ruang publik.",
 					severity: "MEDIUM" as const,
 				},
 				{
+					category: "ALTERCATION" as const,
+					description: "Tawuran antar pelajar di jalan utama.",
+					severity: "CRITICAL" as const,
+				},
+				{
 					category: "TRAFFIC_INCIDENT" as const,
-					description: "Laporan kecelakaan lalu lintas dengan hambatan jalur.",
-					lat: -6.1667,
-					lng: 106.7994,
+					description: "Kecelakaan beruntun melibatkan 3 kendaraan.",
+					severity: "HIGH" as const,
+				},
+				{
+					category: "TRAFFIC_INCIDENT" as const,
+					description: "Mobil mogok menyebabkan kemacetan panjang.",
 					severity: "LOW" as const,
 				},
+				{
+					category: "SUSPICIOUS_VEHICLE" as const,
+					description: "Mobil terparkir lama tanpa identitas di area perumahan.",
+					severity: "LOW" as const,
+				},
+				{
+					category: "CROWD" as const,
+					description: "Kerumunan massa tak berizin menutupi trotoar.",
+					severity: "MEDIUM" as const,
+				},
+				{
+					category: "OTHER" as const,
+					description: "Pohon tumbang menghalangi sebagian jalan.",
+					severity: "MEDIUM" as const,
+				},
 			] as const;
-			const scenario = scenarios[minuteBucket % scenarios.length];
+
+			const scenario = scenarios[Math.floor(Math.random() * scenarios.length)];
 			if (!scenario) {
 				throw new TRPCError({
 					code: "INTERNAL_SERVER_ERROR",
 					message: "Mock scenario unavailable",
 				});
 			}
+
+			// Random Jabodetabek coordinates
+			// Lat: -6.1000 to -6.3500, Lng: 106.6500 to 106.9500
+			const lat = -6.1000 - (Math.random() * 0.2500);
+			const lng = 106.6500 + (Math.random() * 0.3000);
+			
+			const cities = ["Jakarta Pusat", "Jakarta Selatan", "Jakarta Barat", "Jakarta Timur", "Jakarta Utara", "Depok", "Tangerang", "Bekasi"];
+			const city = cities[Math.floor(Math.random() * cities.length)];
+
 			const report = await transaction.report.create({
 				data: {
 					category: scenario.category,
 					description: scenario.description,
-					lat: scenario.lat,
-					lng: scenario.lng,
-					city: "Jakarta Pusat",
+					lat,
+					lng,
+					city,
 					province: "DKI Jakarta",
 					reportedAt: new Date(),
 					reporterRef,
@@ -280,9 +302,9 @@ export const reportsRouter = router({
 							type: "TEXT",
 						},
 					},
-					lat: scenario.lat,
-					lng: scenario.lng,
-					city: "Jakarta Pusat",
+					lat,
+					lng,
+					city,
 					province: "DKI Jakarta",
 					severity: scenario.severity,
 					sources: { create: { sourceId: report.id, sourceType: "REPORT" } },

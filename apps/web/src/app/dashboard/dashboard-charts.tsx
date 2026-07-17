@@ -6,11 +6,22 @@ import {
 	Bar,
 	BarChart,
 	CartesianGrid,
+	Cell,
 	ResponsiveContainer,
 	Tooltip,
 	XAxis,
 	YAxis,
 } from "recharts";
+
+const COMPOSITION_COLORS = [
+	"#3b82f6", // blue
+	"#10b981", // emerald
+	"#f59e0b", // amber
+	"#ef4444", // red
+	"#8b5cf6", // violet
+	"#0ea5e9", // sky
+	"#64748b", // slate
+];
 
 interface TrendChartProps {
 	data: Array<{ count: number; date: string }>;
@@ -78,7 +89,7 @@ export function CompositionChart({ data }: CompositionChartProps) {
 				<BarChart
 					data={data}
 					layout="vertical"
-					margin={{ bottom: 0, left: 12, right: 8, top: 8 }}
+					margin={{ bottom: 0, left: 16, right: 16, top: 8 }}
 				>
 					<CartesianGrid
 						horizontal={false}
@@ -95,16 +106,21 @@ export function CompositionChart({ data }: CompositionChartProps) {
 					<YAxis
 						axisLine={false}
 						dataKey="category"
-						tick={{ fill: "#475569", fontSize: 10 }}
+						tick={{ fill: "#475569", fontSize: 11, fontWeight: 500 }}
 						tickLine={false}
 						type="category"
-						width={100}
+						width={160}
 					/>
 					<Tooltip
-						contentStyle={{ borderColor: "#e2e8f0", borderRadius: 6 }}
+						contentStyle={{ borderColor: "#e2e8f0", borderRadius: 6, fontSize: "12px" }}
 						formatter={(value) => [value, "Laporan"]}
+						cursor={{ fill: "#f8fafc" }}
 					/>
-					<Bar dataKey="count" fill="#334155" radius={[0, 3, 3, 0]} />
+					<Bar dataKey="count" radius={[0, 4, 4, 0]}>
+						{data.map((entry, index) => (
+							<Cell key={`cell-${index}`} fill={COMPOSITION_COLORS[index % COMPOSITION_COLORS.length]} />
+						))}
+					</Bar>
 				</BarChart>
 			</ResponsiveContainer>
 		</div>
