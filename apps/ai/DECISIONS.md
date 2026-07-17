@@ -274,6 +274,42 @@
   hour_bucket/day_type.
 - **Status:** ✅ Diputuskan (disetujui user, 2026-07-17).
 
+### M28 — Batch risk score 4 versi temporal (current / last_week / last_month / 6_months_ago)
+- **Context:** Permintaan user (2026-07-17): cache batch tidak lagi tunggal, melainkan 4
+  snapshot lanskap risiko — hingga sekarang, seminggu lalu, sebulan lalu, dan 6 bulan lalu —
+  mis. untuk fitur perbandingan temporal di UI/demo ("area ini memburuk vs 6 bulan lalu").
+- **Decision (rincian yang menunggu persetujuan):**
+  1. **Definisi versi** (`serving.batch_versions` di config): `current` (T = latest),
+     `last_week` (T = latest − 7 hari), `last_month` (T = latest − 30 hari),
+     `6_months_ago` (T = latest − 182 hari). **Hari tetap** (30/182), bukan bulan kalender,
+     demi determinisme.
+  2. **Anchor "sekarang" = `latest`** (max tanggal data raw, kini 2026-07-08), BUKAN
+     tanggal dinding — konsisten dengan seluruh pipeline cutoff (M3) dan sadar reporting
+     lag ±9 hari.
+  3. **Semua versi dihitung dengan MODEL PRODUKSI yang sama (v4)**; yang berbeda hanya
+     `reference_date` dataset (fitur + decay diukur dari T, memakai `build_dataset(T)` —
+     data ≤ T saja, anti-leakage tetap berlaku). Snapshot dibaca sebagai "lanskap risiko
+     pada T menurut model terkini". Alternatif "model era-T" DITOLAK: hanya ada model
+     mingguan v1–v3, tidak ada model −1/−6 bulan; mencampur model membuat perbandingan
+     antar-versi tidak apples-to-apples.
+  4. **Artefak:** `data/cache/risk_batch_{name}.parquet` + meta per versi
+     (`risk_batch_meta_{name}.json`). Precompute keempatnya dalam satu run
+     (`python -m strsp.serving.precompute`); tetap offline-first — butuh raw parquet
+     lokal (sudah ada), TANPA Socrata/training live (demo resilience M24 utuh).
+  5. **API backward-compatible:** `GET /risk-score/batch` mendapat query param opsional
+     `version` (default `current` — kontrak lama tak berubah tanpa param); nilai asing →
+     422. `/risk-score/point` tetap current-only. `/health` tambah field
+     `cache_versions` (daftar versi + freshness); `cache_freshness` lama tetap = current.
+  6. **Gate baru (Final #9):** (a) keempat file versi ada & lolos kontrak RiskCell;
+     (b) param `version` bekerja, versi asing 422; (c) precompute 4-versi deterministik;
+     (d) sanity: `current` vs `6_months_ago` TIDAK identik (pergeseran decay 182 hari
+     harus terlihat), `current` vs `last_week` boleh mirip (temuan drift kecil HO2 —
+     dilaporkan apa adanya).
+- **Consequences:** Waktu precompute ×4 (build_dataset per T; ~1–2 mnt total); payload
+  per versi tetap ~5,6k sel; sel yang belum punya data pada T lama otomatis absen di
+  versi tsb (jumlah baris antar versi boleh berbeda — itu sinyal, bukan bug).
+- **Status:** ✅ Disetujui user & diimplementasikan (2026-07-17); gate Final #9 mengawal.
+
 ---
 
 ## C. Open questions

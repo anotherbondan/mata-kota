@@ -262,8 +262,11 @@ independen** — tidak tersentuh STRSP. Latency budget (diukur nyata di gate #5)
 
 ### GET /risk-score/batch — precomputed lookup (heatmap)
 
-Query opsional: `hour_bucket` (label config, mis. `18-23`), `day_type` (`weekday|weekend`).
+Query opsional: `hour_bucket` (label config, mis. `18-23`), `day_type` (`weekday|weekend`),
+`version` (**M28**: `current` | `last_week` | `last_month` | `6_months_ago`; default
+`current` — snapshot temporal, semua diprediksi model produksi dgn decay dari T versi).
 Nilai asing → 422. Cache belum pernah dibangun → **503 terstruktur** (M24).
+Jumlah sel boleh berbeda antar versi (grid muda absen di snapshot lama — sinyal, bukan bug).
 
 ```bash
 curl "http://localhost:8000/risk-score/batch?hour_bucket=18-23&day_type=weekend"

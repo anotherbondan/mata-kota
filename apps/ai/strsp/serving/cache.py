@@ -1,9 +1,10 @@
-"""Final Tahap 4 — cache serving dengan fallback (M24, gate #3).
+"""Final Tahap 4 — cache serving multi-versi dengan fallback (M24, M28, gate #3 & #9).
 
 Semantik:
-- load(): baca parquet+meta ke memori; gagal (file hilang/korup) → PERTAHANKAN
-  salinan in-memory terakhir (return False, tidak melempar).
-- cells() None ⇔ cache belum pernah berhasil dimuat → endpoint balas 503 terstruktur.
+- load(): baca parquet+meta TIAP versi (serving.batch_versions) ke memori; versi yang
+  gagal dibaca TIDAK menimpa salinan in-memory-nya. Return True ⇔ versi `current`
+  berhasil termuat pada panggilan ini.
+- cells(version) None ⇔ versi itu belum pernah termuat → endpoint balas 503 terstruktur.
 """
 
 from __future__ import annotations
@@ -14,44 +15,50 @@ from pathlib import Path
 import pandas as pd
 
 from strsp.config import AI_ROOT
-
-
-def _resolve(config: dict, key: str) -> Path:
-    raw = Path(config["serving"][key])
-    return raw if raw.is_absolute() else AI_ROOT / raw
+from strsp.serving.versions import batch_versions, version_paths
 
 
 class RiskCache:
-    """Pemegang in-memory lookup table batch + fitur grid utk /point."""
+    """Pemegang in-memory lookup table batch per versi + fitur grid utk /point."""
 
     def __init__(self, config: dict) -> None:
         self._config = config
-        self._cells: pd.DataFrame | None = None
+        self._versions: dict[str, pd.DataFrame] = {}
+        self._metas: dict[str, dict] = {}
         self._grid_features: dict[tuple[float, float], float] | None = None
-        self._meta: dict | None = None
 
     def load(self) -> bool:
-        """Muat/muat-ulang cache dari disk. False bila gagal (in-memory dipertahankan)."""
+        """Muat/muat-ulang semua versi. False bila `current` gagal (in-memory dipertahankan)."""
+        current_loaded = False
+        for version in batch_versions(self._config):
+            name = version["name"]
+            cache_path, meta_path = version_paths(self._config, name)
+            try:
+                cells = pd.read_parquet(cache_path)
+                meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            except (FileNotFoundError, OSError, ValueError, json.JSONDecodeError):
+                continue  # versi ini gagal — salinan lama (bila ada) dipertahankan
+            self._versions[name] = cells
+            self._metas[name] = meta
+            if name == "current":
+                current_loaded = True
+
+        raw_grid = Path(self._config["serving"]["grid_features_path"])
+        grid_path = raw_grid if raw_grid.is_absolute() else AI_ROOT / raw_grid
         try:
-            cells = pd.read_parquet(_resolve(self._config, "cache_path"))
-            grid = pd.read_parquet(_resolve(self._config, "grid_features_path"))
-            meta = json.loads(
-                _resolve(self._config, "meta_path").read_text(encoding="utf-8")
-            )
-        except (FileNotFoundError, OSError, ValueError, json.JSONDecodeError):
-            return False
+            grid = pd.read_parquet(grid_path)
+            self._grid_features = {
+                (float(row.grid_lat), float(row.grid_lng)): float(row.smoothed_grid_risk)
+                for row in grid.itertuples(index=False)
+            }
+        except (FileNotFoundError, OSError, ValueError):
+            pass  # pertahankan lookup lama
 
-        self._cells = cells
-        self._grid_features = {
-            (float(row.grid_lat), float(row.grid_lng)): float(row.smoothed_grid_risk)
-            for row in grid.itertuples(index=False)
-        }
-        self._meta = meta
-        return True
+        return current_loaded
 
-    def cells(self) -> pd.DataFrame | None:
-        """Lookup table batch (LABEL_KEYS + risk_score); None bila belum pernah termuat."""
-        return self._cells
+    def cells(self, version: str = "current") -> pd.DataFrame | None:
+        """Lookup table satu versi; None bila versi itu belum pernah termuat."""
+        return self._versions.get(version)
 
     def smoothed_risk_for(self, grid_lat: float, grid_lng: float) -> float:
         """smoothed_grid_risk utk satu grid; grid tanpa histori → config
@@ -62,5 +69,18 @@ class RiskCache:
         return self._grid_features.get((grid_lat, grid_lng), fallback)
 
     def freshness(self) -> str | None:
-        """generated_at precompute terakhir (ISO) utk /health; None bila belum ada."""
-        return self._meta.get("generated_at") if self._meta else None
+        """generated_at precompute versi current (ISO); None bila belum ada."""
+        meta = self._metas.get("current")
+        return meta.get("generated_at") if meta else None
+
+    def versions_info(self) -> list[dict]:
+        """Ringkasan tiap versi termuat utk /health (M28)."""
+        return [
+            {
+                "name": name,
+                "reference_date": meta.get("reference_date"),
+                "generated_at": meta.get("generated_at"),
+                "rows": meta.get("rows"),
+            }
+            for name, meta in self._metas.items()
+        ]
