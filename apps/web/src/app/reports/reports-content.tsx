@@ -80,7 +80,7 @@ export default function ReportsContent() {
 			<div className="flex flex-col gap-4 border-slate-200 border-b pb-5 lg:flex-row lg:items-end lg:justify-between">
 				<div>
 					<h1 className="text-2xl font-semibold text-slate-900">
-						Laporan Masuk
+						Laporan
 					</h1>
 					<p className="mt-1 text-sm text-slate-500">
 						{visibleReports.length} laporan ditemukan

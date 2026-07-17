@@ -60,6 +60,7 @@ const HEATMAP_BASE_SCORES: Record<string, number> = {
   HIGH: 65,
   LOW: 20,
   MEDIUM: 40,
+  REPORT: 10,
 };
 
 function stableHash(value: string) {
@@ -80,22 +81,40 @@ function heatmapScore(incident: IncidentMapItem) {
   return baseScore + noise;
 }
 
-function incidentGeoJson(incidents: IncidentMapItem[]) {
+function incidentGeoJson(incidents: IncidentMapItem[], reports: ReportMapItem[]) {
+  const incidentFeatures = incidents.map((incident) => ({
+    geometry: {
+      coordinates: [incident.lng, incident.lat],
+      type: "Point" as const,
+    },
+    properties: {
+      category: incident.category,
+      heatmapScore: heatmapScore(incident),
+      id: incident.id,
+      severity: incident.severity,
+      status: incident.status,
+    },
+    type: "Feature" as const,
+  }));
+
+  const reportFeatures = reports.map((report) => ({
+    geometry: {
+      coordinates: reportCoordinates(report),
+      type: "Point" as const,
+    },
+    properties: {
+      category: report.category,
+      heatmapScore: 15 + (stableHash(report.id) % 10),
+      id: report.id,
+      severity: "REPORT",
+      status: "REPORTED",
+      isReport: true,
+    },
+    type: "Feature" as const,
+  }));
+
   return {
-    features: incidents.map((incident) => ({
-      geometry: {
-        coordinates: [incident.lng, incident.lat],
-        type: "Point" as const,
-      },
-      properties: {
-        category: incident.category,
-        heatmapScore: heatmapScore(incident),
-        id: incident.id,
-        severity: incident.severity,
-        status: incident.status,
-      },
-      type: "Feature" as const,
-    })),
+    features: [...incidentFeatures, ...reportFeatures],
     type: "FeatureCollection" as const,
   };
 }
@@ -117,22 +136,7 @@ function reportCoordinates(report: ReportMapItem): [number, number] {
   ];
 }
 
-function reportGeoJson(reports: ReportMapItem[]) {
-  return {
-    features: reports.map((report) => ({
-      geometry: {
-        coordinates: reportCoordinates(report),
-        type: "Point" as const,
-      },
-      properties: {
-        category: report.category,
-        id: report.id,
-      },
-      type: "Feature" as const,
-    })),
-    type: "FeatureCollection" as const,
-  };
-}
+
 
 function setLayerVisibility(
   map: mapboxgl.Map,
@@ -272,21 +276,18 @@ export default function IncidentMap({
     );
 
     const handleLoad = () => {
-      const incidentData = incidentGeoJson(incidentsRef.current);
+      const pinData = incidentGeoJson(incidentsRef.current, reportsRef.current);
+      const heatData = incidentGeoJson(incidentsRef.current, reportsRef.current);
 
       map.addSource("incidents", {
         cluster: true,
         clusterMaxZoom: 14,
         clusterRadius: 52,
-        data: incidentData,
+        data: pinData,
         type: "geojson",
       });
       map.addSource("incident-heat-source", {
-        data: incidentData,
-        type: "geojson",
-      });
-      map.addSource("reports", {
-        data: reportGeoJson(reportsRef.current),
+        data: heatData,
         type: "geojson",
       });
 
@@ -437,6 +438,8 @@ export default function IncidentMap({
             "#f97316",
             "MEDIUM",
             "#eab308",
+            "REPORT",
+            "#94a3b8",
             "#16a34a",
           ],
           "circle-radius": 8,
@@ -448,27 +451,19 @@ export default function IncidentMap({
       });
 
       map.addLayer({
-        id: "report-points",
-        paint: {
-          "circle-color": "#0f766e",
-          "circle-radius": 9,
-          "circle-stroke-color": "#ffffff",
-          "circle-stroke-width": 2,
-        },
-        source: "reports",
-        type: "circle",
-      });
-
-      map.addLayer({
-        id: "report-labels",
+        filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "isReport"], true]],
+        id: "incident-report-symbol",
         layout: {
-          "text-field": "",
-          "text-size": 10,
+          "text-field": "-",
+          "text-size": 14,
+          visibility: "visible",
         },
         paint: { "text-color": "#ffffff" },
-        source: "reports",
+        source: "incidents",
         type: "symbol",
       });
+
+
 
       map.addSource("units", {
         data: unitGeoJson(unitsRef.current),
@@ -499,24 +494,18 @@ export default function IncidentMap({
 
     map.on("load", handleLoad);
     map.on("click", "incident-points", (event) => {
-      if (
-        map.queryRenderedFeatures(event.point, { layers: ["report-points"] })
-          .length > 0
-      ) {
-        return;
-      }
-      const id = event.features?.[0]?.properties?.id;
+      const feature = event.features?.[0];
+      const id = feature?.properties?.id;
+      const isReport = feature?.properties?.isReport;
       if (typeof id === "string") {
-        onSelectRef.current(id);
+        if (isReport) {
+          setSelectedReportId(id);
+        } else {
+          onSelectRef.current(id);
+        }
       }
     });
     map.on("click", "incident-clusters", (event) => {
-      if (
-        map.queryRenderedFeatures(event.point, { layers: ["report-points"] })
-          .length > 0
-      ) {
-        return;
-      }
       const feature = event.features?.[0];
       const clusterId = feature?.properties?.cluster_id;
       if (
@@ -544,18 +533,7 @@ export default function IncidentMap({
     map.on("mouseleave", "incident-points", () => {
       map.getCanvas().style.cursor = "";
     });
-    map.on("click", "report-points", (event) => {
-      const id = event.features?.[0]?.properties?.id;
-      if (typeof id === "string") {
-        setSelectedReportId(id);
-      }
-    });
-    map.on("mouseenter", "report-points", () => {
-      map.getCanvas().style.cursor = "pointer";
-    });
-    map.on("mouseleave", "report-points", () => {
-      map.getCanvas().style.cursor = "";
-    });
+
 
     const resizeObserver = new ResizeObserver(() => map.resize());
     resizeObserver.observe(container);
@@ -599,8 +577,7 @@ export default function IncidentMap({
     setLayerVisibility(map, "incident-clusters", !isHeatmap);
     setLayerVisibility(map, "incident-cluster-count", !isHeatmap);
     setLayerVisibility(map, "incident-points", !isHeatmap);
-    setLayerVisibility(map, "report-points", !isHeatmap);
-    setLayerVisibility(map, "report-labels", !isHeatmap);
+    setLayerVisibility(map, "incident-report-symbol", !isHeatmap);
     setLayerVisibility(map, "patrol-units", true);
   }, [layerMode, isReady]);
 
@@ -609,17 +586,16 @@ export default function IncidentMap({
       return;
     }
     const map = mapRef.current;
+    const pinData = incidentGeoJson(incidents, reports);
+    const heatData = incidentGeoJson(incidents, reports);
     (
       map?.getSource("incidents") as mapboxgl.GeoJSONSource | undefined
-    )?.setData(incidentGeoJson(incidents));
+    )?.setData(pinData);
     (
       map?.getSource("incident-heat-source") as
         | mapboxgl.GeoJSONSource
         | undefined
-    )?.setData(incidentGeoJson(incidents));
-    (map?.getSource("reports") as mapboxgl.GeoJSONSource | undefined)?.setData(
-      reportGeoJson(reports),
-    );
+    )?.setData(heatData);
     (map?.getSource("units") as mapboxgl.GeoJSONSource | undefined)?.setData(
       unitGeoJson(units),
     );
@@ -648,7 +624,7 @@ export default function IncidentMap({
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="text-[11px] font-bold uppercase text-teal-700">
-                Laporan Masuk
+                Laporan
               </p>
               <h3 className="mt-1 text-sm font-bold text-slate-900">
                 {categoryLabels[selectedReport.category] ??
@@ -848,7 +824,9 @@ export default function IncidentMap({
               {layerMode === "pin" ? (
                 <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-xs font-medium text-slate-600">
                   <div className="flex items-center gap-2">
-                    <span className="h-3 w-3 rounded-full bg-teal-700 shadow-sm" />
+                    <div className="relative flex size-3 items-center justify-center rounded-full bg-slate-400 text-white shadow-sm">
+                      <span className="absolute -mt-0.5 text-[8px] font-black leading-none">-</span>
+                    </div>
                     <span>Laporan</span>
                   </div>
                   <span className="font-bold text-slate-800">
@@ -856,6 +834,15 @@ export default function IncidentMap({
                   </span>
                 </div>
               ) : null}
+              <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-xs font-medium text-slate-600">
+                <div className="flex items-center gap-2">
+                  <span className="h-3 w-3 rounded-full bg-blue-600 shadow-sm" />
+                  <span>Unit patroli</span>
+                </div>
+                <span className="font-bold text-slate-800">
+                  {activeUnitCount}
+                </span>
+              </div>
             </>
           )}
         </div>
