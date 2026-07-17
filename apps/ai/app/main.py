@@ -35,17 +35,28 @@ from strsp.serving.schemas import RiskCell
 @asynccontextmanager
 async def lifespan(application: FastAPI):
     config = load_config()
-    model, version = load_deployed_model(config)
+    model = None
+    version = None
+    model_error = None
+    try:
+        model, version = load_deployed_model(config)
+    except (FileNotFoundError, RuntimeError) as error:
+        model_error = str(error)
+
     cache = RiskCache(config)
     cache.load()  # gagal -> cells() None; endpoint balas 503 terstruktur (M24)
 
     application.state.config = config
     application.state.model = model
     application.state.model_version = version
+    application.state.model_error = model_error
     application.state.risk_cache = cache
-    application.state.monitor = Monitor(config, version)
+    application.state.monitor = Monitor(config, version or "unavailable")
     application.state.bucket_table = bucket_encoding(config)
-    print(f"[startup] model aktif: {version} | cache_freshness: {cache.freshness()}")
+    print(
+        f"[startup] model aktif: {version or 'unavailable'} | "
+        f"cache_freshness: {cache.freshness()}"
+    )
     yield
 
 
@@ -102,9 +113,14 @@ class ClassifyResponse(BaseModel):
 def health(request: Request) -> dict:
     """Liveness check. Kontrak lama (status) + field backward-compatible baru."""
     state = request.app.state
+    cache_ready = state.risk_cache.cells() is not None
+    model_ready = state.model is not None
     return {
-        "status": "ok",
+        "status": "ok" if cache_ready and model_ready else "degraded",
+        "ready": cache_ready and model_ready,
         "model_version": getattr(state, "model_version", None),
+        "model_error": getattr(state, "model_error", None),
+        "cache_ready": cache_ready,
         "cache_freshness": (
             state.risk_cache.freshness() if hasattr(state, "risk_cache") else None
         ),
@@ -184,6 +200,15 @@ def risk_score_point(request: Request, lat: float, lng: float, timestamp: str):
     """Real-time inference satu titik dengan model produksi (v4)."""
     state = request.app.state
     config = state.config
+
+    if state.model is None:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                state.model_error
+                or "model produksi belum tersedia — jalankan pipeline training lalu restart service"
+            ),
+        )
 
     bbox = config["serving"]["bbox_chicago"]
     if not (bbox["lat_min"] <= lat <= bbox["lat_max"]) or not (

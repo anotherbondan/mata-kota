@@ -8,14 +8,24 @@
       "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
     },
     "lint": {
-      "dependsOn": ["^lint"]
+      "dependsOn": ["transit"]
     },
     "check-types": {
-      "dependsOn": ["^check-types"]
+      "dependsOn": ["transit"]
+    },
+    "test": {
+      "dependsOn": ["transit"],
+      "outputs": []
+    },
+    "transit": {
+      "dependsOn": ["^transit"]
     },
     "dev": {
       "cache": false,
       "persistent": true
+    },
+    "setup": {
+      "cache": false
     },
     "db:push": {
       "cache": false

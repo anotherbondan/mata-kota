@@ -7,11 +7,10 @@ import {
 	ArrowLeft,
 	Check,
 	Clock,
-	ExternalLink,
+	Lightbulb,
 	MapPin,
 	Navigation,
 	Search,
-	ShieldCheck,
 	Users,
 	X,
 } from "lucide-react";
@@ -145,6 +144,14 @@ function IncidentDialog({ incidentId, initialView, onClose }: IncidentDialogProp
 			toast.success("Status verifikasi diperbarui");
 		},
 	});
+	const elevateMutation = useMutation({
+		...trpc.incidents.elevate.mutationOptions(),
+		onError: (error) => toast.error(error.message),
+		onSuccess: async () => {
+			await refreshIncidentData();
+			toast.success("Status eskalasi diperbarui");
+		},
+	});
 	const assignPersonnel = useMutation({
 		...trpc.assignments.create.mutationOptions(),
 		onError: (error) => toast.error(error.message),
@@ -261,156 +268,199 @@ function IncidentDialog({ incidentId, initialView, onClose }: IncidentDialogProp
 
 					{detail && view === "detail" ? (
 						<div className="space-y-6">
-							<div className="flex flex-wrap items-center gap-2">
+							{/* Header & Badges */}
+							<div className="flex flex-wrap items-center gap-2 mb-2">
+								{detail.isElevated && (
+									<span className="rounded-full bg-red-600 px-3 py-1 text-xs font-semibold tracking-wide text-white animate-pulse">
+										ESKALASI
+									</span>
+								)}
 								<span
-									className={`px-2.5 py-1 text-xs font-semibold ${severityStyles[detail.severity]}`}
+									className={`rounded-full px-3 py-1 text-xs font-semibold tracking-wide ${
+										detail.severity === "CRITICAL" || detail.severity === "HIGH"
+											? "bg-red-200 text-red-700"
+											: detail.severity === "MEDIUM"
+												? "bg-amber-100 text-amber-700"
+												: "bg-emerald-100 text-emerald-700"
+									}`}
 								>
 									{severityLabels[detail.severity] ?? detail.severity}
 								</span>
-								<span className="bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+								<span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
 									{statusLabels[detail.status] ?? detail.status}
 								</span>
-								<span className="font-mono text-xs text-slate-500">
-									{detail.id}
+								<span className="font-mono text-xs text-slate-400 ml-auto">
+									#{detail.id.slice(-6).toUpperCase()}
 								</span>
 							</div>
 
-							<div className="grid gap-3 text-sm text-slate-600 sm:grid-cols-2">
-								<p className="flex items-center gap-2">
-									<Clock className="size-4 text-amber-500" />
-									{formatIncidentTime(detail.createdAt)}
-								</p>
-								<p className="flex items-center gap-2">
-									<MapPin className="size-4 text-amber-500" />
-									{detail.lat.toFixed(5)}, {detail.lng.toFixed(5)}
+							{/* Metadata */}
+							<div className="flex flex-col gap-3 text-sm text-slate-600">
+								<div className="flex items-start gap-3">
+									<div className="text-amber-500 mt-0.5">
+										<Clock className="size-5" />
+									</div>
+									<span className="font-medium">
+										{formatIncidentTime(detail.createdAt)}
+									</span>
+								</div>
+								<div className="flex items-start gap-3">
+									<div className="text-amber-500 mt-0.5">
+										<MapPin className="size-5" />
+									</div>
+									<span className="font-medium leading-relaxed">
+										{detail.city && detail.province
+											? `${detail.city}, ${detail.province}`
+											: `${detail.lat.toFixed(5)}, ${detail.lng.toFixed(5)}`}
+									</span>
+								</div>
+							</div>
+
+							{/* Summary Block */}
+							<div className="rounded-xl border border-blue-200 bg-blue-50/60 p-4 flex gap-3 text-slate-600">
+								<Lightbulb className="size-5 shrink-0 mt-0.5 text-blue-500" />
+								<p className="text-sm font-medium leading-relaxed">
+									{detail.aiSummaries?.[0]?.summaryText ??
+										detail.evidence.find((item) => item.textSnippet)?.textSnippet ??
+										`Telah terjadi aksi ${
+											categoryLabels[detail.category]?.toLowerCase() ?? "insiden"
+										} di lokasi ini. Laporan awal masuk pada ${formatIncidentTime(detail.createdAt)}.`}
 								</p>
 							</div>
 
+							{/* Evidence */}
 							<section>
-								<h3 className="mb-3 text-sm font-semibold text-slate-900">
-									Ringkasan
+								<h3 className="font-bold text-slate-900 text-base mb-3">
+									Bukti Foto/Video
 								</h3>
-								<div className="border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
-									{detail.aiSummaries[0]?.summaryText ??
-										detail.evidence.find((item) => item.textSnippet)
-											?.textSnippet ??
-										"Ringkasan belum tersedia untuk insiden ini."}
-								</div>
-							</section>
-
-							<section>
-								<h3 className="mb-3 text-sm font-semibold text-slate-900">
-									Bukti Terhubung
-								</h3>
-								{detail.evidence.length === 0 ? (
-									<p className="text-sm text-slate-500">Belum ada bukti.</p>
-								) : (
-									<div className="divide-y divide-slate-200 border border-slate-200">
-										{detail.evidence.map((item) => (
-											<div className="p-4" key={item.id}>
-												<p className="text-xs font-semibold text-slate-500">
-													{item.type}
-												</p>
-												{item.textSnippet ? (
-													<p className="mt-1 text-sm text-slate-700">
-														{item.textSnippet}
-													</p>
-												) : null}
-												{item.url ? (
-													<a
-														className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:underline"
-														href={item.url}
-														rel="noreferrer"
-														target="_blank"
-													>
-														Buka bukti <ExternalLink className="size-3.5" />
-													</a>
-												) : null}
+								{detail.evidence && detail.evidence.length > 0 ? (
+									<div className="flex gap-4 overflow-x-auto pb-2">
+										{detail.evidence.map((ev, i) => (
+											<div
+												key={ev.id}
+												className="h-40 w-64 shrink-0 rounded-2xl border border-amber-200/60 bg-slate-100 overflow-hidden relative"
+											>
+												{ev.url && (
+													<img
+														src={ev.url}
+														alt={`Bukti ${i + 1}`}
+														className="w-full h-full object-cover"
+													/>
+												)}
 											</div>
 										))}
+									</div>
+								) : (
+									<div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-sm font-medium text-slate-500">
+										Belum ada bukti foto/video yang dilampirkan.
 									</div>
 								)}
 							</section>
 
-							<section>
-								<h3 className="mb-3 text-sm font-semibold text-slate-900">
-									Status Verifikasi
-								</h3>
-								<div className="flex flex-wrap gap-2">
-									<Button
-										disabled={verifyIncident.isPending}
-										onClick={() =>
-											verifyIncident.mutate({
-												id: detail.id,
-												verificationStatus: "UNVERIFIED",
-											})
-										}
-										size="small"
-										variant={
-											detail.verificationStatus === "UNVERIFIED"
-												? "primary"
-												: "tertiary"
-										}
-									>
-										Belum Diverifikasi
-									</Button>
-									<Button
-										disabled={verifyIncident.isPending}
-										onClick={() =>
-											verifyIncident.mutate({
-												id: detail.id,
-												verificationStatus: "VERIFIED",
-											})
-										}
-										size="small"
-										variant={
-											detail.verificationStatus === "VERIFIED"
-												? "primary"
-												: "tertiary"
-										}
-									>
-										<ShieldCheck className="size-4" /> Terverifikasi
-									</Button>
-									<Button
-										disabled={verifyIncident.isPending}
-										onClick={() =>
-											verifyIncident.mutate({
-												id: detail.id,
-												verificationStatus: "FALSE_REPORT",
-											})
-										}
-										size="small"
-										variant={
-											detail.verificationStatus === "FALSE_REPORT"
-												? "primary"
-												: "tertiary"
-										}
-									>
-										Laporan Salah
-									</Button>
-								</div>
-							</section>
+							{/* Verification Status */}
+							{isOperator && (
+								<section>
+									<h3 className="font-bold text-slate-900 text-base mb-1">
+										Status Verifikasi
+									</h3>
+									<p className="text-sm text-slate-600 mb-4">
+										Pilih status di bawah untuk memperbarui perkembangan investigasi dan keaslian insiden di lokasi.
+									</p>
+									<div className="flex flex-wrap gap-3">
+										<button
+											disabled={verifyIncident.isPending}
+											onClick={() =>
+												verifyIncident.mutate({
+													id: detail.id,
+													verificationStatus: "UNVERIFIED",
+												})
+											}
+											className={`rounded-full px-5 py-2.5 text-sm font-semibold transition-colors ${
+												detail.verificationStatus === "UNVERIFIED"
+													? "bg-[#1b3654] text-white border border-[#1b3654]"
+													: "bg-white text-[#1b3654] border border-slate-300 hover:bg-slate-50"
+											}`}
+										>
+											Belum Ditangani
+										</button>
+										<button
+											disabled={verifyIncident.isPending}
+											onClick={() =>
+												verifyIncident.mutate({
+													id: detail.id,
+													verificationStatus: "VERIFIED",
+												})
+											}
+											className={`rounded-full px-5 py-2.5 text-sm font-semibold transition-colors ${
+												detail.verificationStatus === "VERIFIED"
+													? "bg-[#1b3654] text-white border border-[#1b3654]"
+													: "bg-white text-[#1b3654] border border-slate-300 hover:bg-slate-50"
+											}`}
+										>
+											Sudah Ditangani
+										</button>
+										<button
+											disabled={verifyIncident.isPending}
+											onClick={() =>
+												verifyIncident.mutate({
+													id: detail.id,
+													verificationStatus: "FALSE_REPORT",
+												})
+											}
+											className={`rounded-full px-5 py-2.5 text-sm font-semibold transition-colors ${
+												detail.verificationStatus === "FALSE_REPORT"
+													? "bg-[#1b3654] text-white border border-[#1b3654]"
+													: "bg-white text-[#1b3654] border border-slate-300 hover:bg-slate-50"
+											}`}
+										>
+											Laporan Salah
+										</button>
+									</div>
+								</section>
+							)}
 
-							<section>
-								<h3 className="mb-3 text-sm font-semibold text-slate-900">
-									Timeline
-								</h3>
-								<div className="space-y-3 border-slate-200 border-l pl-4">
-									{detail.statusLogs.length === 0 ? (
-										<p className="text-sm text-slate-500">
-											Belum ada perubahan status.
-										</p>
-									) : null}
-									{detail.statusLogs.map((log) => (
-										<div key={log.id}>
-											<p className="text-sm font-medium text-slate-800">
-												{statusLabels[log.toStatus] ?? log.toStatus}
-											</p>
-											<p className="text-xs text-slate-500">
-												{formatIncidentTime(log.changedAt)} oleh {log.user.name}
-											</p>
-										</div>
-									))}
+							{/* Footer Actions & Timeline */}
+							<section className="flex flex-col gap-6 border-t border-slate-200 pt-6">
+								{isOperator && (
+									<div className="flex flex-wrap items-center gap-3 w-full justify-between">
+										<button
+											disabled={elevateMutation.isPending}
+											onClick={() =>
+												elevateMutation.mutate({
+													id: detail.id,
+													isElevated: !detail.isElevated,
+												})
+											}
+											className={`rounded-full px-6 py-2.5 text-sm font-semibold transition-colors ${
+												detail.isElevated
+													? "bg-slate-200 text-slate-700 hover:bg-slate-300"
+													: "bg-red-100 text-red-700 hover:bg-red-200"
+											}`}
+										>
+											{detail.isElevated ? "Batalkan Eskalasi" : "Tandai Eskalasi"}
+										</button>
+									</div>
+								)}
+
+								<div>
+									<h3 className="mb-3 text-sm font-semibold text-slate-900">
+										Timeline
+									</h3>
+									<div className="space-y-3 border-slate-200 border-l pl-4">
+										{detail.statusLogs.length === 0 ? (
+											<p className="text-sm text-slate-500">Belum ada perubahan status.</p>
+										) : null}
+										{detail.statusLogs.map((log) => (
+											<div key={log.id}>
+												<p className="text-sm font-medium text-slate-800">
+													{statusLabels[log.toStatus] ?? log.toStatus}
+												</p>
+												<p className="text-xs text-slate-500">
+													{formatIncidentTime(log.changedAt)} oleh {log.user.name}
+												</p>
+											</div>
+										))}
+									</div>
 								</div>
 							</section>
 						</div>

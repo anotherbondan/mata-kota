@@ -9,6 +9,11 @@
     "ignoreUnknown": false,
     "includes": [
       "!**/.next",
+      "!**/.pytest_cache",
+      "!**/.ruff_cache",
+      "!**/.venv",
+      "!**/*.egg-info",
+      "!**/__pycache__",
       "!**/dist",
       "!**/.turbo",
       "!**/.nx",
@@ -29,6 +34,7 @@
       "!**/.svelte-kit",
       "!**/wrangler.jsonc",
       "!**/.source",
+      "!apps/ai/data",
       "!**/convex/_generated"
     ]
   },

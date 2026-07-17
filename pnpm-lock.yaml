@@ -91,6 +91,8 @@ importers:
         specifier: 7.9.3
         version: 7.9.3(eslint@10.7.0(jiti@2.7.0))(typescript@6.0.3)
 
+  apps/ai: {}
+
   apps/web:
     dependencies:
       '@mata-kota/api':

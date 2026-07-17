@@ -1,6 +1,11 @@
 import { z } from "zod";
 
 import { protectedProcedure, router } from "../index";
+import {
+	getAiHealth,
+	getRiskGrid,
+	riskGridInputSchema,
+} from "../lib/ai-service";
 
 const JAKARTA_OFFSET_MS = 7 * 60 * 60 * 1000;
 
@@ -17,6 +22,7 @@ function jakartaDateKey(date: Date) {
 }
 
 export const dashboardRouter = router({
+	aiHealth: protectedProcedure.query(() => getAiHealth()),
 	incidentMap: protectedProcedure
 		.input(
 			z
@@ -130,6 +136,9 @@ export const dashboardRouter = router({
 			reportedAt: report.reportedAt.toISOString(),
 		}));
 	}),
+	riskGrid: protectedProcedure
+		.input(riskGridInputSchema)
+		.query(({ input }) => getRiskGrid(input)),
 	trend: protectedProcedure
 		.input(
 			z.object({ days: z.number().int().min(1).max(31).default(7) }).optional()

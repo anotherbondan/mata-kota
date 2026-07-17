@@ -16,7 +16,7 @@ This project was created with [Better-T-Stack](https://github.com/AmanVarshney01
 - **Charts** - Apache ECharts
 - **Operational updates** - 10-second polling with simulated BWC movement
 - **Media and reports** - Cloudinary and pdf-lib
-- **AI service boundary** - FastAPI scaffold for severity classification and incident summaries
+- **AI service boundary** - Turbo-managed FastAPI service with validated tRPC health and risk-grid access
 - **Biome** - Linting and formatting
 - **Husky** - Git hooks for code quality
 - **Turborepo** - Optimized monorepo build system
@@ -27,6 +27,13 @@ First, install the dependencies:
 
 ```bash
 pnpm install
+```
+
+Create a Python 3.11+ virtual environment once, then install the AI dependencies:
+
+```bash
+python -m venv apps/ai/.venv
+pnpm run setup:ai
 ```
 
 ## Database Setup
@@ -74,18 +81,21 @@ The implemented non-AI MVP flow is:
 
 ## AI Service
 
-The PRD separates the AI processing engine from the web app. A FastAPI scaffold lives in
-`apps/ai` and exposes a deterministic placeholder endpoint for severity/summary generation.
+The PRD separates the AI processing engine from the web app. FastAPI lives in `apps/ai`
+as the `@mata-kota/ai` Turbo workspace app. Starting web development also starts the AI
+service on port 8000:
 
 ```bash
-cd apps/ai
-python -m venv .venv
-.venv\Scripts\activate
-pip install -e .
-uvicorn app.main:app --reload --port 8000
+pnpm run dev
 ```
 
-Point the web/API layer at it with `AI_SERVICE_URL`.
+Use `pnpm run dev:ai` to start only FastAPI. The server-side tRPC procedures
+`dashboard.aiHealth` and `dashboard.riskGrid` call it through `AI_SERVICE_URL` and
+validate the response contract. FastAPI reports a degraded health state when trained
+model/cache artifacts are absent; model-dependent endpoints return a structured `503`.
+
+The bundled STRSP model is trained for Chicago. It must be retrained and reconfigured
+for Jakarta before its risk grid is rendered on the operational map.
 
 ## UI Customization
 
@@ -136,7 +146,11 @@ mata-kota/
 
 - `pnpm run dev`: Start all applications in development mode
 - `pnpm run build`: Build all applications
-- `pnpm run dev:web`: Start only the web application
+- `pnpm run dev:web`: Start web and its FastAPI runtime dependency
+- `pnpm run dev:ai`: Start only the FastAPI service
+- `pnpm run setup:ai`: Install FastAPI and test dependencies into the selected Python environment
+- `pnpm run test`: Run all workspace test suites through Turbo
+- `pnpm run test:ai`: Run only the FastAPI test suite
 - `pnpm run check-types`: Check TypeScript types across all apps
 - `pnpm run db:push`: Push schema changes to database
 - `pnpm run db:generate`: Generate database client/types

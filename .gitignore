@@ -18,7 +18,10 @@ apps/web/src/routeTree.gen.ts
 # AI service (STRSP)
 apps/ai/data/
 __pycache__/
+.pytest_cache/
+.ruff_cache/
 .venv/
+*.egg-info/
 
 # IDEs and editors
 .vscode/*

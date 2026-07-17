@@ -479,7 +479,7 @@ export default function IncidentMap({
             "LIVE",
             "#2563eb",
             "STALE",
-            "#64748b",
+            "#2563eb",
             "#94a3b8",
           ],
           "circle-radius": 6,

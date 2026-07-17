@@ -16,12 +16,17 @@ konteks waktu (hour_bucket × day_type) dari data historis kejahatan Chicago (So
 
 ## Setup
 
+From the repository root:
+
 ```bash
-cd apps/ai
-python -m venv .venv
-.venv\Scripts\activate            # Windows
-pip install -e ".[dev]"
+python -m venv apps/ai/.venv
+pnpm run setup:ai
+pnpm run dev:ai
 ```
+
+Turbo uses `apps/ai/.venv` automatically when it exists, then falls back to an active
+virtual environment or a system Python 3 command. `pnpm run dev` and
+`pnpm run dev:web` start this service alongside Next.js.
 
 Token Socrata (opsional — tanpa token fetch tetap jalan, hanya throttled):
 salin `.env.example` → `.env`, isi `SOCRATA_APP_TOKEN=...`. Jangan commit.
@@ -41,8 +46,8 @@ python -m strsp.continual.pipeline              # → data/models/v{1..4}.json +
 # Tahap 4 — precompute lookup table serving (SEKALI sebelum demo; demo resilience)
 python -m strsp.serving.precompute              # → data/cache/risk_batch.parquet (5.619 sel)
 
-# Serve
-uvicorn app.main:app --port 8000
+# Serve through Turbo
+pnpm run dev:ai
 ```
 
 Semua artefak `data/` di-gitignore. Acceptance gates: `pytest -v` (31 test, wajib hijau).
@@ -90,14 +95,18 @@ apps/ai/
 └── tests/              # 31 acceptance tests / 21 gate (pytest)
 ```
 
-## Titik integrasi ke Matakota (wiring = kerja partner full-stack)
+## Titik integrasi ke Matakota
 
-- tRPC `riskGrid` — `packages/api/src/routers/dashboard.ts` → fetch `AI_SERVICE_URL`
-  (`packages/env/src/server.ts`) → `GET /risk-score/batch`.
-- Layer peta disisipkan `beforeId "incident-heat"` — `components/incident-map.tsx`.
+- tRPC `dashboard.aiHealth` → `GET /health`.
+- tRPC `dashboard.riskGrid` → fetch `AI_SERVICE_URL` → `GET /risk-score/batch`.
+- Semua response divalidasi di `packages/api/src/lib/ai-service.ts`; timeout/error
+  upstream dikembalikan sebagai error gateway terstruktur.
 - Kontrak response: array `{grid_lat, grid_lng, risk_score, hour_bucket, day_type}` (SPEC §12).
+- Service tetap dapat boot tanpa artefak model/cache dengan status `degraded`; endpoint
+  yang membutuhkan artefak membalas `503` terstruktur.
 
 ## Catatan
 
 Model berbasis **Chicago** (seed app memakai Jakarta) — keputusan geo-framing di
-**DECISIONS M5** (masih open, level produk). Keterbatasan jujur lain: `SUMMARY.md`.
+**DECISIONS M5** (masih open, level produk). Karena itu grid AI belum dipasang sebagai
+layer peta Jakarta. Keterbatasan jujur lain: `SUMMARY.md`.
