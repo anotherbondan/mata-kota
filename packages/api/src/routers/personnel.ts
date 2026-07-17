@@ -1,8 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import { auth } from "@mata-kota/auth";
-import { nrpToAuthEmail } from "@mata-kota/auth/nrp";
 import { protectedProcedure, router, supervisorProcedure } from "../index";
 import { haversineDistanceKm } from "../lib/geo";
 import { idSchema, paginationSchema, personnelStatusSchema } from "../schemas";
@@ -61,27 +59,7 @@ export const personnelRouter = router({
 				});
 			}
 
-			const personnel = await ctx.db.personnel.create({ data: input });
-
-			// Automatically create a user account for the new personnel with a default password.
-			// Their email will be formatted as badgeNo@polri.go.id.
-			try {
-				const email = nrpToAuthEmail(input.badgeNo);
-				// We use a predefined default password. They can change it later.
-				const password = "Password123!";
-				await auth.api.signUpEmail({
-					body: {
-						email,
-						password,
-						name: input.name,
-					}
-				});
-			} catch (error) {
-				console.error("Failed to auto-create auth user for personnel:", error);
-				// Non-fatal, personnel is created, but no login account yet.
-			}
-
-			return personnel;
+			return ctx.db.personnel.create({ data: input });
 		}),
 	delete: supervisorProcedure
 		.input(z.object({ id: idSchema }))
@@ -299,19 +277,6 @@ export const personnelRouter = router({
 					},
 				});
 				created.push(personnel);
-				
-				try {
-					const email = nrpToAuthEmail(officer.badgeNo);
-					await auth.api.signUpEmail({
-						body: {
-							email,
-							password: "Password123!",
-							name: officer.name,
-						}
-					});
-				} catch (error) {
-					console.error(`Failed to auto-create auth user for personnel ${officer.badgeNo}:`, error);
-				}
 			}
 
 			return { count: created.length };

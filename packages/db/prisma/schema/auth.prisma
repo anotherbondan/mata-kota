@@ -9,7 +9,6 @@ model User {
   updatedAt     DateTime            @updatedAt
   sessions      Session[]
   accounts      Account[]
-  personnel     Personnel?
   statusLogs    IncidentStatusLog[]
   assignments   Assignment[]        @relation("AssignmentCreator")
 

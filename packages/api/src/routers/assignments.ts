@@ -222,8 +222,6 @@ export const assignmentsRouter = router({
 		)
 		.query(async ({ ctx, input }) => {
 			const limit = input?.limit ?? 20;
-			const isPersonnel = ctx.session.user.role === "PERSONNEL";
-
 			const items = await ctx.db.assignment.findMany({
 				cursor: input?.cursor ? { id: input.cursor } : undefined,
 				include: assignmentInclude,
@@ -233,7 +231,6 @@ export const assignmentsRouter = router({
 				where: {
 					...(input?.incidentId ? { incidentId: input.incidentId } : {}),
 					...(input?.personnelId ? { personnelId: input.personnelId } : {}),
-					...(isPersonnel ? { personnel: { userId: ctx.session.user.id } } : {}),
 				},
 			});
 			const nextItem = items.length > limit ? items.pop() : undefined;
@@ -252,23 +249,13 @@ export const assignmentsRouter = router({
 			const updatedAssignment = await ctx.db.$transaction(
 				async (transaction) => {
 					const assignment = await transaction.assignment.findUnique({
-						include: { incident: true, personnel: true },
+						include: { incident: true },
 						where: { id: input.assignmentId },
 					});
 					if (!assignment) {
 						throw new TRPCError({
 							code: "NOT_FOUND",
 							message: "Assignment not found",
-						});
-					}
-
-					if (
-						ctx.session.user.role === "PERSONNEL" &&
-						assignment.personnel.userId !== ctx.session.user.id
-					) {
-						throw new TRPCError({
-							code: "FORBIDDEN",
-							message: "You can only update your own assignments",
 						});
 					}
 

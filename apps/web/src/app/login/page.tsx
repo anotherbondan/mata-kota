@@ -20,7 +20,7 @@ export default function LoginPage() {
       <header className="border-b border-gray-200 px-8 py-4">
         <Image
           alt="Matakota"
-          className="h-8 w-auto rotate-x-180"
+          className="h-8 w-auto "
           height={40}
           priority
           src="/matakota.svg"

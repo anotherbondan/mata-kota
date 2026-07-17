@@ -29,9 +29,6 @@ export default function DashboardPage() {
 		null
 	);
 	const [isCreateOpen, setIsCreateOpen] = useState(false);
-	
-	const me = useQuery(trpc.me.queryOptions());
-	const isPersonnel = me.data?.user?.role === "PERSONNEL";
 
 	const overview = useQuery({
 		...trpc.dashboard.overview.queryOptions(),
@@ -98,21 +95,17 @@ export default function DashboardPage() {
 						Situasi insiden dan kesiapan personel terkini.
 					</p>
 				</div>
-				{!isPersonnel && (
-					<button
-						className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-slate-800 to-slate-900 px-5 py-2.5 text-sm font-bold text-white shadow-lg hover:shadow-xl hover:from-slate-700 hover:to-slate-800 active:scale-[0.97] transition-all"
-						onClick={() => setIsCreateOpen(true)}
-						type="button"
-					>
-						<Plus className="size-4" />
-						Buat Insiden
-					</button>
-				)}
+				<button
+					className="flex items-center gap-2 rounded-2xl bg-gradient-to-r from-slate-800 to-slate-900 px-5 py-2.5 text-sm font-bold text-white shadow-lg hover:shadow-xl hover:from-slate-700 hover:to-slate-800 active:scale-[0.97] transition-all"
+					onClick={() => setIsCreateOpen(true)}
+					type="button"
+				>
+					<Plus className="size-4" />
+					Buat Insiden
+				</button>
 			</div>
 
-			{!isPersonnel && (
-				<>
-					<section
+			<section
 				aria-label="Ringkasan operasional"
 				className="grid grid-cols-2 gap-4 lg:grid-cols-4"
 			>
@@ -228,8 +221,6 @@ export default function DashboardPage() {
 					</div>
 				</div>
 			</section>
-				</>
-			)}
 
 			<section className="rounded-3xl border border-slate-100/60 bg-white p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-12">
 				<div className="mb-6 flex items-center gap-2">
