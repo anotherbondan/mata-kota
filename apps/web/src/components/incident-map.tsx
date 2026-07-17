@@ -285,7 +285,6 @@ export default function IncidentMap({
 			map.addLayer({
 				id: "incident-heat",
 				layout: { visibility: "none" },
-				maxzoom: 16,
 				paint: {
 					"heatmap-color": [
 						"interpolate",
