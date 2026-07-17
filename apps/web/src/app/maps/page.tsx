@@ -1,8 +1,8 @@
+import { createContext } from "@mata-kota/api/context";
+import { createCaller } from "@mata-kota/api/routers/index";
 import { auth } from "@mata-kota/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { createCaller } from "@mata-kota/api/routers/index";
-import { createContext } from "@mata-kota/api/context";
 import { NextRequest } from "next/server";
 
 import MapPageContent from "./map-content";
@@ -17,16 +17,23 @@ export default async function MapPage() {
 	}
 
 	const req = new NextRequest("http://localhost", {
-		headers: await headers()
+		headers: await headers(),
 	});
 	const ctx = await createContext(req);
-	
+
 	const caller = createCaller(ctx);
-	
-	const [initialIncidents, initialDevices] = await Promise.all([
+
+	const [initialIncidents, initialReports, initialDevices] = await Promise.all([
 		caller.dashboard.incidentMap({ activeOnly: false }),
-		caller.devices.list()
+		caller.dashboard.reportMap(),
+		caller.devices.list(),
 	]);
 
-	return <MapPageContent initialDevices={initialDevices} initialIncidents={initialIncidents} />;
+	return (
+		<MapPageContent
+			initialDevices={initialDevices}
+			initialIncidents={initialIncidents}
+			initialReports={initialReports}
+		/>
+	);
 }

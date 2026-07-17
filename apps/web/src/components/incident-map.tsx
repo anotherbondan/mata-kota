@@ -1,7 +1,10 @@
 "use client";
 
+import { X } from "lucide-react";
 import mapboxgl from "mapbox-gl";
 import { useEffect, useRef, useState } from "react";
+
+import { categoryLabels, formatIncidentTime } from "@/lib/incident-display";
 
 export interface IncidentMapItem {
 	category: string;
@@ -21,24 +24,41 @@ export interface UnitMapItem {
 	personnel: { id: string; name: string };
 }
 
+export interface ReportMapItem {
+	category: string;
+	description: string;
+	id: string;
+	lat: number;
+	lng: number;
+	reportedAt: string;
+	reporterRef: string | null;
+}
+
 interface IncidentMapProps {
 	className?: string;
 	incidents: IncidentMapItem[];
 	onSelectIncident: (id: string) => void;
+	reports?: ReportMapItem[];
 	units?: UnitMapItem[];
 }
 
+const EMPTY_REPORTS: ReportMapItem[] = [];
 const EMPTY_UNITS: UnitMapItem[] = [];
 const JAKARTA_CENTER: [number, number] = [106.8272, -6.1751];
 const MAPBOX_STYLE = "mapbox://styles/mapbox/light-v11";
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
+const DEFAULT_COORDINATE_TOLERANCE = 0.000_01;
+
+function stableHash(value: string) {
+	let hash = 0;
+	for (let index = 0; index < value.length; index += 1) {
+		hash = (hash * 31 + value.charCodeAt(index)) % 2_147_483_647;
+	}
+	return hash;
+}
 
 function generatedHeatmapScore(id: string) {
-	let hash = 0;
-	for (let index = 0; index < id.length; index += 1) {
-		hash = (hash * 31 + id.charCodeAt(index)) % 2_147_483_647;
-	}
-	return hash % 101;
+	return stableHash(id) % 101;
 }
 
 function heatmapScore(incident: IncidentMapItem) {
@@ -66,6 +86,51 @@ function incidentGeoJson(incidents: IncidentMapItem[]) {
 		})),
 		type: "FeatureCollection" as const,
 	};
+}
+
+function reportCoordinates(report: ReportMapItem): [number, number] {
+	const isAtDefaultCoordinate =
+		Math.abs(report.lat - JAKARTA_CENTER[1]) <= DEFAULT_COORDINATE_TOLERANCE &&
+		Math.abs(report.lng - JAKARTA_CENTER[0]) <= DEFAULT_COORDINATE_TOLERANCE;
+	if (!isAtDefaultCoordinate) {
+		return [report.lng, report.lat];
+	}
+
+	const hash = stableHash(report.id);
+	const angle = ((hash % 3600) / 3600) * Math.PI * 2;
+	const radius = 0.0007 + ((Math.floor(hash / 3600) % 1000) / 1000) * 0.0018;
+	return [
+		report.lng + Math.cos(angle) * radius,
+		report.lat + Math.sin(angle) * radius,
+	];
+}
+
+function reportGeoJson(reports: ReportMapItem[]) {
+	return {
+		features: reports.map((report) => ({
+			geometry: {
+				coordinates: reportCoordinates(report),
+				type: "Point" as const,
+			},
+			properties: {
+				category: report.category,
+				id: report.id,
+			},
+			type: "Feature" as const,
+		})),
+		type: "FeatureCollection" as const,
+	};
+}
+
+function setLayerVisibility(
+	map: mapboxgl.Map,
+	layerId: string,
+	isVisible: boolean
+) {
+	if (!map.getLayer(layerId)) {
+		return;
+	}
+	map.setLayoutProperty(layerId, "visibility", isVisible ? "visible" : "none");
 }
 
 function unitGeoJson(units: UnitMapItem[]) {
@@ -96,20 +161,27 @@ export default function IncidentMap({
 	className = "h-[360px]",
 	incidents,
 	onSelectIncident,
+	reports = EMPTY_REPORTS,
 	units = EMPTY_UNITS,
 }: IncidentMapProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const incidentsRef = useRef(incidents);
 	const mapRef = useRef<mapboxgl.Map | null>(null);
 	const onSelectRef = useRef(onSelectIncident);
+	const reportsRef = useRef(reports);
 	const unitsRef = useRef(units);
 	const [isReady, setIsReady] = useState(false);
 	const [layerMode, setLayerMode] = useState<"heatmap" | "pin">("pin");
+	const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
 	const [showModeSwitcher, setShowModeSwitcher] = useState(false);
 
 	incidentsRef.current = incidents;
 	onSelectRef.current = onSelectIncident;
+	reportsRef.current = reports;
 	unitsRef.current = units;
+	const selectedReport = reports.find(
+		(report) => report.id === selectedReportId
+	);
 
 	// Calculate counts for legend
 	const criticalCount = incidents.filter(
@@ -151,6 +223,10 @@ export default function IncidentMap({
 			});
 			map.addSource("incident-heat-source", {
 				data: incidentData,
+				type: "geojson",
+			});
+			map.addSource("reports", {
+				data: reportGeoJson(reportsRef.current),
 				type: "geojson",
 			});
 
@@ -261,6 +337,29 @@ export default function IncidentMap({
 				type: "circle",
 			});
 
+			map.addLayer({
+				id: "report-points",
+				paint: {
+					"circle-color": "#0f766e",
+					"circle-radius": 9,
+					"circle-stroke-color": "#ffffff",
+					"circle-stroke-width": 2,
+				},
+				source: "reports",
+				type: "circle",
+			});
+
+			map.addLayer({
+				id: "report-labels",
+				layout: {
+					"text-field": "L",
+					"text-size": 10,
+				},
+				paint: { "text-color": "#ffffff" },
+				source: "reports",
+				type: "symbol",
+			});
+
 			map.addSource("units", {
 				data: unitGeoJson(unitsRef.current),
 				type: "geojson",
@@ -290,12 +389,24 @@ export default function IncidentMap({
 
 		map.on("load", handleLoad);
 		map.on("click", "incident-points", (event) => {
+			if (
+				map.queryRenderedFeatures(event.point, { layers: ["report-points"] })
+					.length > 0
+			) {
+				return;
+			}
 			const id = event.features?.[0]?.properties?.id;
 			if (typeof id === "string") {
 				onSelectRef.current(id);
 			}
 		});
 		map.on("click", "incident-clusters", (event) => {
+			if (
+				map.queryRenderedFeatures(event.point, { layers: ["report-points"] })
+					.length > 0
+			) {
+				return;
+			}
 			const feature = event.features?.[0];
 			const clusterId = feature?.properties?.cluster_id;
 			if (
@@ -323,6 +434,18 @@ export default function IncidentMap({
 		map.on("mouseleave", "incident-points", () => {
 			map.getCanvas().style.cursor = "";
 		});
+		map.on("click", "report-points", (event) => {
+			const id = event.features?.[0]?.properties?.id;
+			if (typeof id === "string") {
+				setSelectedReportId(id);
+			}
+		});
+		map.on("mouseenter", "report-points", () => {
+			map.getCanvas().style.cursor = "pointer";
+		});
+		map.on("mouseleave", "report-points", () => {
+			map.getCanvas().style.cursor = "";
+		});
 
 		const resizeObserver = new ResizeObserver(() => map.resize());
 		resizeObserver.observe(container);
@@ -334,15 +457,15 @@ export default function IncidentMap({
 					if (mapRef.current) {
 						mapRef.current.flyTo({
 							center: [position.coords.longitude, position.coords.latitude],
+							essential: true,
 							zoom: 12,
-							essential: true
 						});
 					}
 				},
 				(error) => {
 					console.warn("Geolocation denied or failed:", error);
 				},
-				{ timeout: 10000 }
+				{ timeout: 10_000 }
 			);
 		}
 
@@ -361,34 +484,10 @@ export default function IncidentMap({
 		const map = mapRef.current;
 
 		const isHeatmap = layerMode === "heatmap";
-		if (map.getLayer("incident-heat")) {
-			map.setLayoutProperty(
-				"incident-heat",
-				"visibility",
-				isHeatmap ? "visible" : "none"
-			);
-		}
-		if (map.getLayer("incident-clusters")) {
-			map.setLayoutProperty(
-				"incident-clusters",
-				"visibility",
-				isHeatmap ? "none" : "visible"
-			);
-		}
-		if (map.getLayer("incident-cluster-count")) {
-			map.setLayoutProperty(
-				"incident-cluster-count",
-				"visibility",
-				isHeatmap ? "none" : "visible"
-			);
-		}
-		if (map.getLayer("incident-points")) {
-			map.setLayoutProperty(
-				"incident-points",
-				"visibility",
-				isHeatmap ? "none" : "visible"
-			);
-		}
+		setLayerVisibility(map, "incident-heat", isHeatmap);
+		setLayerVisibility(map, "incident-clusters", !isHeatmap);
+		setLayerVisibility(map, "incident-cluster-count", !isHeatmap);
+		setLayerVisibility(map, "incident-points", !isHeatmap);
 	}, [layerMode, isReady]);
 
 	useEffect(() => {
@@ -404,10 +503,13 @@ export default function IncidentMap({
 				| mapboxgl.GeoJSONSource
 				| undefined
 		)?.setData(incidentGeoJson(incidents));
+		(map?.getSource("reports") as mapboxgl.GeoJSONSource | undefined)?.setData(
+			reportGeoJson(reports)
+		);
 		(map?.getSource("units") as mapboxgl.GeoJSONSource | undefined)?.setData(
 			unitGeoJson(units)
 		);
-	}, [incidents, isReady, units]);
+	}, [incidents, isReady, reports, units]);
 
 	return (
 		<div
@@ -416,11 +518,54 @@ export default function IncidentMap({
 			role="region"
 		>
 			<div className="absolute inset-0" ref={containerRef} />
-			
-			{!MAPBOX_TOKEN ? (
+
+			{MAPBOX_TOKEN ? null : (
 				<div className="absolute inset-0 z-50 grid place-items-center bg-white/80 px-6 text-center text-sm font-semibold text-slate-800">
-					Token Mapbox tidak ditemukan atau tidak valid. Silakan periksa file .env Anda.
+					Token Mapbox tidak ditemukan atau tidak valid. Silakan periksa file
+					.env Anda.
 				</div>
+			)}
+
+			{selectedReport ? (
+				<aside
+					aria-label="Detail laporan"
+					className="absolute left-4 top-4 z-20 w-[min(20rem,calc(100%-2rem))] rounded-lg border border-teal-100 bg-white p-4 shadow-xl"
+				>
+					<div className="flex items-start justify-between gap-3">
+						<div className="min-w-0">
+							<p className="text-[11px] font-bold uppercase text-teal-700">
+								Laporan Masuk
+							</p>
+							<h3 className="mt-1 text-sm font-bold text-slate-900">
+								{categoryLabels[selectedReport.category] ??
+									selectedReport.category}
+							</h3>
+						</div>
+						<button
+							aria-label="Tutup detail laporan"
+							className="grid size-8 shrink-0 place-items-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+							onClick={() => setSelectedReportId(null)}
+							title="Tutup detail laporan"
+							type="button"
+						>
+							<X aria-hidden="true" className="size-4" />
+						</button>
+					</div>
+					<p className="mt-3 line-clamp-3 text-sm text-slate-600">
+						{selectedReport.description}
+					</p>
+					<div className="mt-3 space-y-1 border-t border-slate-100 pt-3 text-xs text-slate-500">
+						<p>{formatIncidentTime(selectedReport.reportedAt)}</p>
+						<p>
+							{selectedReport.lat.toFixed(4)}, {selectedReport.lng.toFixed(4)}
+						</p>
+						{selectedReport.reporterRef ? (
+							<p className="break-words">
+								Referensi: {selectedReport.reporterRef}
+							</p>
+						) : null}
+					</div>
+				</aside>
 			) : null}
 
 			{/* Mode Switcher Overlay (Bottom Left) */}
@@ -528,6 +673,15 @@ export default function IncidentMap({
 						</div>
 					</>
 				)}
+				<div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-xs font-medium text-slate-600">
+					<div className="flex items-center gap-2">
+						<span className="grid size-4 place-items-center rounded-full bg-teal-700 text-[9px] font-bold text-white shadow-sm">
+							L
+						</span>
+						<span>Laporan</span>
+					</div>
+					<span className="font-bold text-slate-800">{reports.length}</span>
+				</div>
 			</div>
 		</div>
 	);

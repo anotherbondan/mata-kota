@@ -42,6 +42,10 @@ export default function DashboardPage() {
 		...trpc.dashboard.incidentMap.queryOptions({ activeOnly: false }),
 		refetchInterval: POLLING_INTERVAL,
 	});
+	const mapReports = useQuery({
+		...trpc.dashboard.reportMap.queryOptions(),
+		refetchInterval: POLLING_INTERVAL,
+	});
 	const devices = useQuery({
 		...trpc.devices.list.queryOptions(),
 		refetchInterval: POLLING_INTERVAL,
@@ -138,6 +142,7 @@ export default function DashboardPage() {
 							className="h-full min-h-[420px] rounded-2xl"
 							incidents={mapIncidents.data ?? []}
 							onSelectIncident={setSelectedIncidentId}
+							reports={mapReports.data ?? []}
 							units={devices.data ?? []}
 						/>
 					</div>

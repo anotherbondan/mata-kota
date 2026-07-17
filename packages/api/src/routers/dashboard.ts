@@ -117,6 +117,26 @@ export const dashboardRouter = router({
 			count: group._count._all,
 		}));
 	}),
+	reportMap: protectedProcedure.query(async ({ ctx }) => {
+		const reports = await ctx.db.report.findMany({
+			orderBy: { reportedAt: "desc" },
+			select: {
+				category: true,
+				description: true,
+				id: true,
+				lat: true,
+				lng: true,
+				reportedAt: true,
+				reporterRef: true,
+			},
+			take: 500,
+		});
+
+		return reports.map((report) => ({
+			...report,
+			reportedAt: report.reportedAt.toISOString(),
+		}));
+	}),
 	trend: protectedProcedure
 		.input(
 			z.object({ days: z.number().int().min(1).max(31).default(7) }).optional()
