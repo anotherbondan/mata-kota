@@ -19,7 +19,6 @@
     "@trpc/client": "catalog:",
     "@trpc/server": "catalog:",
     "@trpc/tanstack-react-query": "^11.18.0",
-    "@turf/turf": "^7.3.0",
     "babel-plugin-react-compiler": "^1.0.0",
     "better-auth": "catalog:",
     "deck.gl": "^9.2.2",
