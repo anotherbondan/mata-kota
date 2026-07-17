@@ -62,7 +62,7 @@ export default function LoginPage() {
             <div className="flex w-full max-w-sm flex-col items-center gap-8 text-center z-10">
               <Image
                 alt="Ilustrasi pusat kendali Matakota"
-                className="w-full object-contain drop-shadow-xl rotate-y-180"
+                className="w-full p-10 object-contain drop-shadow-xl rotate-y-180"
                 height={420}
                 src="/matako-auth.png"
                 width={420}

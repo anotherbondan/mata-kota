@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { ChevronDown, ChevronUp, Clock, MapPin, Search } from "lucide-react";
+import { ChevronDown, ChevronUp, Clock, Lightbulb, MapPin, Search } from "lucide-react";
 import { useDeferredValue, useMemo, useState } from "react";
 
 import IncidentDetailModal from "@/components/incident-detail-modal";
@@ -123,66 +123,124 @@ export default function HistoryContent() {
 					return (
 						<div
 							key={incident.id}
-							className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:shadow-md"
+							className="overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-sm transition-all hover:shadow-md"
 						>
-							<button
-								className="flex w-full items-center justify-between p-4 text-left sm:p-5"
+							<div
+								className="flex w-full flex-col p-5 sm:p-7 cursor-pointer"
 								onClick={() => setExpandedId(isExpanded ? null : incident.id)}
-								type="button"
 							>
-								<div className="flex flex-wrap items-center gap-3">
-									<h2 className="font-bold text-slate-900">
+								{/* Header */}
+								<div className="flex items-center justify-between mb-4">
+									<h2 className="font-bold text-slate-900 text-lg">
 										{categoryLabels[incident.category] ?? incident.category}
 									</h2>
-									<span
-										className={`rounded-full px-3 py-1 text-xs font-bold tracking-wide ${severityStyles[incident.severity]}`}
-									>
-										{severityLabels[incident.severity]}
-									</span>
-									<span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold tracking-wide text-slate-600">
-										{statusLabels[incident.status]}
+									<span className={`rounded-full px-4 py-1.5 text-sm font-semibold tracking-wide ${
+										incident.severity === "CRITICAL" || incident.severity === "HIGH" ? "bg-red-200 text-red-700" :
+										incident.severity === "MEDIUM" ? "bg-amber-100 text-amber-700" :
+										"bg-emerald-100 text-emerald-700"
+									}`}>
+										{severityLabels[incident.severity] ?? incident.severity}
 									</span>
 								</div>
-								<div className="flex items-center gap-4">
-									<span className="hidden text-xs font-semibold text-slate-400 sm:block">
-										{incident.id.split("-").pop()}
-									</span>
-									<div className="grid size-8 place-items-center rounded-full bg-slate-50 text-slate-400 transition-colors group-hover:bg-slate-100">
-										{isExpanded ? (
-											<ChevronUp className="size-4" />
-										) : (
-											<ChevronDown className="size-4" />
-										)}
+
+								{/* Metadata */}
+								<div className="flex flex-col gap-3 text-sm text-slate-600 mb-6">
+									<div className="flex items-start gap-3"> 
+									</div>
+									<div className="flex items-start gap-3">
+										<div className="text-amber-500 mt-0.5"><Clock className="size-5" /></div>
+										<span className="font-medium">{formatIncidentTime(incident.createdAt)}</span>
+									</div>
+									<div className="flex items-start gap-3">
+										<div className="text-amber-500 mt-0.5"><MapPin className="size-5" /></div>
+										<span className="font-medium leading-relaxed">
+											{incident.city && incident.province 
+												? `${incident.city}, ${incident.province}` 
+												: `${incident.lat.toFixed(5)}, ${incident.lng.toFixed(5)}`}
+										</span>
 									</div>
 								</div>
-							</button>
 
-							{isExpanded && (
-								<div className="border-t border-slate-100 bg-slate-50/50 p-4 sm:p-5 animate-in slide-in-from-top-2 fade-in duration-200">
-									<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-										<div className="flex flex-col gap-3 text-sm text-slate-600 sm:flex-row sm:gap-6">
-											<span className="flex items-center gap-2">
-												<div className="grid size-7 place-items-center rounded-full bg-amber-100 text-amber-600">
-													<Clock className="size-3.5" />
-												</div>
-												{formatIncidentTime(incident.createdAt)}
-											</span>
-											<span className="flex items-center gap-2">
-												<div className="grid size-7 place-items-center rounded-full bg-emerald-100 text-emerald-600">
-													<MapPin className="size-3.5" />
-												</div>
-												{incident.lat.toFixed(4)}, {incident.lng.toFixed(4)}
-											</span>
-										</div>
-										<button
-											onClick={() => setSelectedIncidentId(incident.id)}
-											className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-md transition-all hover:bg-slate-800 hover:shadow-lg active:scale-95"
-										>
-											Lihat Detail
+								{/* Footer of closed view */}
+								{!isExpanded && (
+									<div className="flex justify-end">
+										<button className="flex items-center gap-1.5 text-sm font-semibold text-[#1b3654]">
+											Lihat Selengkapnya
+											<ChevronDown className="size-4 text-amber-500" />
 										</button>
 									</div>
-								</div>
-							)}
+								)}
+
+								{/* Expanded View */}
+								{isExpanded && (
+									<div className="mt-2 animate-in slide-in-from-top-2 fade-in duration-200 cursor-default" onClick={(e) => e.stopPropagation()}>
+										{/* Summary Block */}
+										<div className="rounded-xl border border-blue-200 bg-blue-50/60 p-4 flex gap-3 text-slate-600 mb-6">
+											<Lightbulb className="size-5 shrink-0 mt-0.5 text-blue-500" />
+											<p className="text-sm font-medium leading-relaxed">
+												Telah terjadi aksi {categoryLabels[incident.category]?.toLowerCase() ?? "insiden"} di lokasi ini. 
+												Laporan awal masuk pada {formatIncidentTime(incident.createdAt)}.
+											</p>
+										</div>
+
+										{/* Evidence */}
+										<h3 className="font-bold text-slate-900 text-base mb-3">Bukti Foto/Video</h3>
+										<div className="flex gap-4 overflow-x-auto pb-2 mb-6">
+											{[1, 2, 3].map((i) => (
+												<div key={i} className="h-40 w-64 shrink-0 rounded-2xl border border-amber-200/60 bg-slate-100 overflow-hidden relative">
+													<img 
+														src={`https://images.unsplash.com/photo-1605806616949-1e87b487cb2a?w=400&q=80`} 
+														alt={`Bukti ${i}`}
+														className="w-full h-full object-cover"
+													/>
+												</div>
+											))}
+										</div>
+
+										{/* Verification Status */}
+										<h3 className="font-bold text-slate-900 text-base mb-1">Status Verifikasi</h3>
+										<p className="text-sm text-slate-600 mb-4">
+											Pilih status di bawah untuk memperbarui perkembangan investigasi dan keaslian insiden di lokasi.
+										</p>
+										<div className="flex flex-wrap gap-3 mb-8">
+											<button className={`rounded-full px-5 py-2.5 text-sm font-semibold transition-colors ${incident.verificationStatus === 'UNVERIFIED' ? 'bg-[#1b3654] text-white border border-[#1b3654]' : 'bg-white text-[#1b3654] border border-slate-300'}`}>
+												Belum Ditangani
+											</button>
+											<button className={`rounded-full px-5 py-2.5 text-sm font-semibold transition-colors ${incident.verificationStatus === 'VERIFIED' ? 'bg-[#1b3654] text-white border border-[#1b3654]' : 'bg-white text-[#1b3654] border border-slate-300'}`}>
+												Sudah Ditangani
+											</button>
+											<button className={`rounded-full px-5 py-2.5 text-sm font-semibold transition-colors ${incident.verificationStatus === 'FALSE_REPORT' ? 'bg-[#1b3654] text-white border border-[#1b3654]' : 'bg-white text-[#1b3654] border border-slate-300'}`}>
+												Laporan Salah
+											</button>
+										</div>
+
+										{/* Footer Actions */}
+										<div className="flex flex-col items-end gap-6">
+											<div className="flex flex-wrap items-center gap-3 w-full justify-end">
+												<button 
+													onClick={() => setSelectedIncidentId(incident.id)}
+													className="rounded-full bg-slate-300/80 px-8 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-300"
+												>
+													Tugaskan Personel
+												</button>
+												<button 
+													onClick={() => setSelectedIncidentId(incident.id)}
+													className="rounded-full bg-[#1b3654] px-10 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#13273e]"
+												>
+													Simpan
+												</button>
+											</div>
+											<button 
+												className="flex items-center gap-1.5 text-sm font-semibold text-[#1b3654]"
+												onClick={() => setExpandedId(null)}
+											>
+												Lihat Selengkapnya
+												<ChevronUp className="size-4 text-amber-500" />
+											</button>
+										</div>
+									</div>
+								)}
+							</div>
 						</div>
 					);
 				})}

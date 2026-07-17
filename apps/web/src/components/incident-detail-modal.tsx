@@ -45,12 +45,13 @@ interface DispatchAssignment {
 	personnel: { badgeNo: string; id: string; name: string };
 }
 
-type ModalView = "assignment" | "detail" | "dispatch";
+type ModalView = "assignment" | "detail" | "dispatch" | "success";
 
 const viewTitles: Record<ModalView, string> = {
 	assignment: "Penugasan Personel",
 	detail: "Detail Insiden",
 	dispatch: "Kartu Dispatch",
+	success: "Berhasil Diplot",
 };
 
 function formatDistance(distanceKm: unknown) {
@@ -147,7 +148,7 @@ function IncidentDialog({ incidentId, onClose }: IncidentDialogProps) {
 					personnel: assignment.personnel,
 				}))
 			);
-			setView("dispatch");
+			setView("success");
 			await refreshIncidentData();
 			toast.success("Personel berhasil ditugaskan");
 		},
@@ -580,9 +581,36 @@ function IncidentDialog({ incidentId, onClose }: IncidentDialogProps) {
 							))}
 						</div>
 					) : null}
+
+					{view === "success" ? (
+						<div className="flex flex-col items-center justify-center py-10 text-center px-4">
+							<img src="/matako-success.png" alt="Berhasil Diplot" className="w-56 h-56 object-contain mb-6 drop-shadow-sm" />
+							<h2 className="text-3xl font-bold text-emerald-600 mb-3">Personel Berhasil Diplot!</h2>
+							<p className="text-slate-500 mb-10 max-w-sm font-medium">
+								Personel terpilih sudah sukses dimasukkan ke dalam daftar penanganan insiden ini.
+							</p>
+							<div className="flex w-full max-w-md gap-4">
+								<button
+									className="flex-1 rounded-full bg-slate-300/80 py-3.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-300"
+									onClick={() => setView("detail")}
+									type="button"
+								>
+									Kembali
+								</button>
+								<button
+									className="flex-1 rounded-full bg-[#1b3654] py-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#13273e]"
+									onClick={() => setView("dispatch")}
+									type="button"
+								>
+									Lihat Daftar Penugasan
+								</button>
+							</div>
+						</div>
+					) : null}
 				</div>
 
-				<footer className="flex flex-wrap items-center justify-end gap-2 border-slate-200 border-t bg-white px-4 py-3 sm:px-6">
+				{view !== "success" ? (
+					<footer className="flex flex-wrap items-center justify-end gap-2 border-slate-200 border-t bg-white px-4 py-3 sm:px-6">
 					{view === "detail" ? (
 						<Button disabled={!canAssign} onClick={() => setView("assignment")}>
 							<Users className="size-4" /> Tugaskan Personel Terdekat
@@ -612,7 +640,8 @@ function IncidentDialog({ incidentId, onClose }: IncidentDialogProps) {
 					{view === "dispatch" ? (
 						<Button onClick={onClose}>Kembali ke Peta</Button>
 					) : null}
-				</footer>
+					</footer>
+				) : null}
 			</div>
 		</div>
 	);
