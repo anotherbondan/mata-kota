@@ -72,6 +72,13 @@ export default function HistoryContent() {
       },
     }),
   );
+  const elevateMutation = useMutation(
+    trpc.incidents.elevate.mutationOptions({
+      onSuccess: () => {
+        queryClient.invalidateQueries();
+      },
+    }),
+  );
 
   return (
     <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
@@ -139,7 +146,7 @@ export default function HistoryContent() {
           return (
             <div
               key={incident.id}
-              className="overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-sm transition-all hover:shadow-md"
+              className={`overflow-hidden rounded-[20px] border bg-white shadow-sm transition-all hover:shadow-md ${incident.isElevated ? "border-red-400 bg-red-50/20" : "border-slate-200"}`}
             >
               <div
                 className="flex w-full flex-col p-5 sm:p-7 cursor-pointer"
@@ -150,18 +157,25 @@ export default function HistoryContent() {
                   <h2 className="font-bold text-slate-900 text-lg">
                     {categoryLabels[incident.category] ?? incident.category}
                   </h2>
-                  <span
-                    className={`rounded-full px-4 py-1.5 text-sm font-semibold tracking-wide ${
-                      incident.severity === "CRITICAL" ||
-                      incident.severity === "HIGH"
-                        ? "bg-red-200 text-red-700"
-                        : incident.severity === "MEDIUM"
-                          ? "bg-amber-100 text-amber-700"
-                          : "bg-emerald-100 text-emerald-700"
-                    }`}
-                  >
-                    {severityLabels[incident.severity] ?? incident.severity}
-                  </span>
+                  <div className="flex gap-2">
+                    {incident.isElevated && (
+                      <span className="rounded-full bg-red-600 px-4 py-1.5 text-sm font-semibold tracking-wide text-white animate-pulse">
+                        ESKALASI
+                      </span>
+                    )}
+                    <span
+                      className={`rounded-full px-4 py-1.5 text-sm font-semibold tracking-wide ${
+                        incident.severity === "CRITICAL" ||
+                        incident.severity === "HIGH"
+                          ? "bg-red-200 text-red-700"
+                          : incident.severity === "MEDIUM"
+                            ? "bg-amber-100 text-amber-700"
+                            : "bg-emerald-100 text-emerald-700"
+                      }`}
+                    >
+                      {severityLabels[incident.severity] ?? incident.severity}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Metadata */}
@@ -293,10 +307,17 @@ export default function HistoryContent() {
                     <div className="flex flex-col items-end gap-6">
                       <div className="flex flex-wrap items-center gap-3 w-full justify-end">
                         <button
+                          disabled={elevateMutation.isPending}
+                          onClick={() => elevateMutation.mutate({ id: incident.id, isElevated: !incident.isElevated })}
+                          className={`rounded-full px-8 py-3 text-sm font-semibold transition-colors ${incident.isElevated ? "bg-slate-200 text-slate-700 hover:bg-slate-300" : "bg-red-100 text-red-700 hover:bg-red-200"}`}
+                        >
+                          {incident.isElevated ? "Batalkan Eskalasi" : "Eskalasi Kasus"}
+                        </button>
+                        <button
                           onClick={() => setSelectedIncidentId(incident.id)}
                           className="rounded-full bg-slate-300/80 px-8 py-3 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-300"
                         >
-                          Tugaskan Personel
+                          {["ASSIGNED", "EN_ROUTE", "ON_SCENE"].includes(incident.status) ? "Lihat Penugasan" : "Tugaskan Personel"}
                         </button>
                       </div>
                       <button
@@ -315,11 +336,18 @@ export default function HistoryContent() {
         })}
       </div>
 
-      <IncidentDetailModal 
-        incidentId={selectedIncidentId} 
-        initialView="assignment"
-        onClose={() => setSelectedIncidentId(null)} 
-      />
+      {(() => {
+        const selectedIncident = incidents.data?.items.find((i) => i.id === selectedIncidentId);
+        const isAssigned = selectedIncident && ["ASSIGNED", "EN_ROUTE", "ON_SCENE"].includes(selectedIncident.status);
+        
+        return (
+          <IncidentDetailModal 
+            incidentId={selectedIncidentId} 
+            initialView={isAssigned ? "dispatch" : "assignment"}
+            onClose={() => setSelectedIncidentId(null)} 
+          />
+        );
+      })()}
     </main>
   );
 }

@@ -163,6 +163,7 @@ model Incident {
   lng                Float
   city               String?
   province           String?
+  isElevated         Boolean             @default(false)
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   sources            IncidentSource[]

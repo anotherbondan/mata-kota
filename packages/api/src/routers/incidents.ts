@@ -190,6 +190,21 @@ export const incidentsRouter = router({
 			});
 			return updated;
 		}),
+	elevate: protectedProcedure
+		.input(
+			z.object({
+				id: idSchema,
+				isElevated: z.boolean(),
+			})
+		)
+		.mutation(async ({ ctx, input }) => {
+			const updated = await ctx.db.incident.update({
+				data: { isElevated: input.isElevated },
+				where: { id: input.id },
+				include: incidentDetailInclude,
+			});
+			return updated;
+		}),
 	updateDetails: supervisorProcedure
 		.input(
 			z.object({

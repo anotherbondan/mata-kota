@@ -129,6 +129,10 @@ function IncidentDialog({ incidentId, initialView, onClose }: IncidentDialogProp
 		}),
 		enabled: view === "assignment" && nearestRequested,
 	});
+	const assignmentsQuery = useQuery({
+		...trpc.assignments.list.queryOptions({ incidentId, limit: 100 }),
+		enabled: view === "dispatch",
+	});
 	const refreshIncidentData = async () => {
 		await queryClient.invalidateQueries();
 	};
@@ -160,15 +164,6 @@ function IncidentDialog({ incidentId, initialView, onClose }: IncidentDialogProp
 		...trpc.assignments.updateOperationalStatus.mutationOptions(),
 		onError: (error) => toast.error(error.message),
 		onSuccess: async (updated) => {
-			if (updated) {
-				setCreatedAssignments((current) =>
-					current.map((assignment) =>
-						assignment.id === updated.id
-							? { ...assignment, incident: updated.incident }
-							: assignment
-					)
-				);
-			}
 			await refreshIncidentData();
 			toast.success("Status insiden diperbarui");
 		},
@@ -522,7 +517,10 @@ function IncidentDialog({ incidentId, initialView, onClose }: IncidentDialogProp
 
 					{view === "dispatch" ? (
 						<div className="space-y-4">
-							{createdAssignments.map((assignment) => (
+							{assignmentsQuery.isLoading ? (
+								<p className="text-sm text-slate-500 py-4 text-center">Memuat penugasan...</p>
+							) : null}
+							{(assignmentsQuery.data?.items ?? createdAssignments).map((assignment) => (
 								<section
 									className="border border-slate-300 bg-slate-50 p-5"
 									key={assignment.id}
@@ -641,7 +639,7 @@ function IncidentDialog({ incidentId, initialView, onClose }: IncidentDialogProp
 						</Button>
 					) : null}
 					{view === "dispatch" ? (
-						<Button onClick={onClose}>Kembali ke Peta</Button>
+						<Button onClick={onClose}>Tutup</Button>
 					) : null}
 					</footer>
 				) : null}
