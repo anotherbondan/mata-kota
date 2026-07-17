@@ -2,7 +2,6 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { protectedProcedure, router } from "../index";
-import { invalidateIncidentMapCache } from "../lib/redis-cache";
 import {
 	assignmentOperationalStatusSchema,
 	idSchema,
@@ -208,7 +207,6 @@ export const assignmentsRouter = router({
 					return assignments;
 				}
 			);
-			await invalidateIncidentMapCache();
 			return createdAssignments;
 		}),
 	list: protectedProcedure
@@ -327,7 +325,6 @@ export const assignmentsRouter = router({
 					});
 				}
 			);
-			await invalidateIncidentMapCache();
 			return updatedAssignment;
 		}),
 });

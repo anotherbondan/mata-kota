@@ -3,11 +3,6 @@ import { z } from "zod";
 
 import { protectedProcedure, router, supervisorProcedure } from "../index";
 import {
-	invalidateRedisCache,
-	mapCacheKeys,
-	withRedisCache,
-} from "../lib/redis-cache";
-import {
 	bwcConnectionStatusSchema,
 	idSchema,
 	latitudeSchema,
@@ -42,7 +37,6 @@ export const devicesRouter = router({
 				},
 				where: { id: device.id },
 			});
-			await invalidateRedisCache(mapCacheKeys.devices);
 			return updated;
 		}),
 	list: protectedProcedure
@@ -52,33 +46,23 @@ export const devicesRouter = router({
 				.optional()
 		)
 		.query(async ({ ctx, input }) => {
-			const devices = await withRedisCache({
-				key: mapCacheKeys.devices,
-				loader: async () => {
-					const rows = await ctx.db.bwcDevice.findMany({
-						orderBy: { updatedAt: "desc" },
+			const devices = await ctx.db.bwcDevice.findMany({
+				orderBy: { updatedAt: "desc" },
+				select: {
+					connectionStatus: true,
+					id: true,
+					lastLat: true,
+					lastLng: true,
+					lastPingAt: true,
+					personnel: {
 						select: {
-							connectionStatus: true,
+							badgeNo: true,
+							currentStatus: true,
 							id: true,
-							lastLat: true,
-							lastLng: true,
-							lastPingAt: true,
-							personnel: {
-								select: {
-									badgeNo: true,
-									currentStatus: true,
-									id: true,
-									name: true,
-								},
-							},
+							name: true,
 						},
-					});
-					return rows.map((device) => ({
-						...device,
-						lastPingAt: device.lastPingAt?.getTime() ?? null,
-					}));
+					},
 				},
-				ttlSeconds: 2,
 			});
 			const staleBefore = Date.now() - (input?.staleAfterMinutes ?? 5) * 60_000;
 
@@ -86,7 +70,7 @@ export const devicesRouter = router({
 				...device,
 				effectiveStatus:
 					device.connectionStatus === "LIVE" &&
-					(!lastPingAt || lastPingAt < staleBefore)
+					(!lastPingAt || lastPingAt.getTime() < staleBefore)
 						? ("STALE" as const)
 						: device.connectionStatus,
 			}));
@@ -115,7 +99,6 @@ export const devicesRouter = router({
 				update: { deviceCode: input.deviceCode },
 				where: { personnelId: personnel.id },
 			});
-			await invalidateRedisCache(mapCacheKeys.devices);
 			return registered;
 		}),
 	setConnectionStatus: supervisorProcedure
@@ -133,7 +116,6 @@ export const devicesRouter = router({
 				data: { connectionStatus: input.status },
 				where: { id: device.id },
 			});
-			await invalidateRedisCache(mapCacheKeys.devices);
 			return updated;
 		}),
 	simulateMovement: protectedProcedure.mutation(async ({ ctx }) => {
@@ -163,7 +145,6 @@ export const devicesRouter = router({
 			})
 		);
 
-		await invalidateRedisCache(mapCacheKeys.devices);
 		return { devices: updated, tick };
 	}),
 });

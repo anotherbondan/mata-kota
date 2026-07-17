@@ -14,7 +14,7 @@ This project was created with [Better-T-Stack](https://github.com/AmanVarshney01
 - **Authentication** - Better-Auth
 - **Maps and geospatial UI** - Mapbox GL JS, Deck.gl, and Turf.js
 - **Charts** - Apache ECharts
-- **Operational updates** - 10-second polling with idempotent simulated report and BWC feeds
+- **Operational updates** - 10-second polling with simulated BWC movement
 - **Media and reports** - Cloudinary and pdf-lib
 - **AI service boundary** - FastAPI scaffold for severity classification and incident summaries
 - **Biome** - Linting and formatting
@@ -50,14 +50,6 @@ pnpm run db:push
 pnpm --filter @mata-kota/db run db:seed
 ```
 
-5. Start Redis for map snapshot caching:
-
-```bash
-docker run --name mata-kota-redis -p 6379:6379 -d redis:7-alpine redis-server --appendonly yes
-```
-
-For Docker Compose environments, run `docker compose -f docker-compose.redis.yml up -d` instead. The API uses `REDIS_URL` and automatically falls back to PostgreSQL when Redis is unavailable.
-
 Then, run the development server:
 
 ```bash
@@ -78,7 +70,7 @@ The implemented non-AI MVP flow is:
 6. Assign up to three officers, using an audited override reason when selecting busy personnel.
 7. Read the generated dispatch card and manually confirm En Route.
 
-`NEXT_PUBLIC_MOCK_FEEDS_ENABLED=true` enables one idempotent mock incident per minute and simulated BWC movement every ten seconds. Set it to `false` when connecting real feeds.
+`NEXT_PUBLIC_MOCK_FEEDS_ENABLED=true` enables simulated BWC movement every ten seconds. Set it to `false` when connecting real feeds.
 
 ## AI Service
 

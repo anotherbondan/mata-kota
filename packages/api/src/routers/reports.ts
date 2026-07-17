@@ -2,7 +2,6 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
 import { protectedProcedure, router, supervisorProcedure } from "../index";
-import { invalidateIncidentMapCache } from "../lib/redis-cache";
 import {
 	idSchema,
 	incidentCategorySchema,
@@ -105,7 +104,6 @@ export const reportsRouter = router({
 					},
 				});
 			});
-			await invalidateIncidentMapCache();
 			return incident;
 		}),
 	create: protectedProcedure
@@ -301,9 +299,6 @@ export const reportsRouter = router({
 
 			return { created: true, incidentId: incident.id };
 		});
-		if (result.created) {
-			await invalidateIncidentMapCache();
-		}
 		return result;
 	}),
 });

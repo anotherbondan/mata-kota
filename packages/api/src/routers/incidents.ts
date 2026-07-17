@@ -3,7 +3,6 @@ import { z } from "zod";
 
 import { protectedProcedure, router, supervisorProcedure } from "../index";
 import { canTransitionIncident } from "../lib/incident-lifecycle";
-import { invalidateIncidentMapCache } from "../lib/redis-cache";
 import {
 	idSchema,
 	incidentCategorySchema,
@@ -81,7 +80,6 @@ export const incidentsRouter = router({
 				},
 				include: incidentDetailInclude,
 			});
-			await invalidateIncidentMapCache();
 			return incident;
 		}),
 	list: protectedProcedure
@@ -186,7 +184,6 @@ export const incidentsRouter = router({
 					where: { id: incident.id },
 				});
 			});
-			await invalidateIncidentMapCache();
 			return updated;
 		}),
 	updateDetails: supervisorProcedure
@@ -219,7 +216,6 @@ export const incidentsRouter = router({
 				include: incidentDetailInclude,
 				where: { id },
 			});
-			await invalidateIncidentMapCache();
 			return updated;
 		}),
 	verify: protectedProcedure
@@ -270,7 +266,6 @@ export const incidentsRouter = router({
 					where: { id: incident.id },
 				});
 			});
-			await invalidateIncidentMapCache();
 			return updated;
 		}),
 });
