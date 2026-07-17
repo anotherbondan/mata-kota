@@ -24,7 +24,7 @@ const POLLING_INTERVAL = 10_000;
 
 export default function DashboardPage() {
 	const queryClient = useQueryClient();
-	useMockOperationalFeed();
+	// useMockOperationalFeed(); // Disabled to stop creating case each 10 seconds
 	const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(
 		null
 	);

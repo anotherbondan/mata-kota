@@ -2,6 +2,7 @@
 
 import { X } from "lucide-react";
 import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useRef, useState } from "react";
 
 import { categoryLabels, formatIncidentTime } from "@/lib/incident-display";
@@ -158,7 +159,7 @@ function unitGeoJson(units: UnitMapItem[]) {
 }
 
 export default function IncidentMap({
-	className = "h-[360px]",
+	className,
 	incidents,
 	onSelectIncident,
 	reports = EMPTY_REPORTS,
@@ -193,8 +194,31 @@ export default function IncidentMap({
 
 	useEffect(() => {
 		const container = containerRef.current;
-		if (!container || mapRef.current || !MAPBOX_TOKEN) {
+
+		if (!container || mapRef.current) {
 			return;
+		}
+
+		if (!MAPBOX_TOKEN) {
+			console.error(
+				"NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN is missing. Add it to .env.local and restart the development server."
+			);
+			return;
+		}
+
+		if (!mapboxgl.supported()) {
+			console.error(
+				"Mapbox GL is not supported. Check WebGL and browser hardware acceleration."
+			);
+			return;
+		}
+
+		const containerRect = container.getBoundingClientRect();
+		if (containerRect.width === 0 || containerRect.height === 0) {
+			console.error("Mapbox container has zero size.", {
+				height: containerRect.height,
+				width: containerRect.width,
+			});
 		}
 
 		mapboxgl.accessToken = MAPBOX_TOKEN;
@@ -206,6 +230,11 @@ export default function IncidentMap({
 			zoom: 10.5,
 		});
 		mapRef.current = map;
+
+		map.on("error", (event) => {
+			console.error("Mapbox error:", event.error);
+		});
+
 		map.addControl(
 			new mapboxgl.NavigationControl({ showCompass: false }),
 			"top-right"
@@ -514,10 +543,10 @@ export default function IncidentMap({
 	return (
 		<div
 			aria-label="Peta insiden interaktif"
-			className={`relative overflow-hidden border border-slate-200 bg-slate-100 ${className}`}
+			className={`relative h-[360px] min-h-[360px] w-full overflow-hidden border border-slate-200 bg-slate-100 ${className ?? ""}`}
 			role="region"
 		>
-			<div className="absolute inset-0" ref={containerRef} />
+			<div className="absolute inset-0 h-full w-full" ref={containerRef} />
 
 			{MAPBOX_TOKEN ? null : (
 				<div className="absolute inset-0 z-50 grid place-items-center bg-white/80 px-6 text-center text-sm font-semibold text-slate-800">

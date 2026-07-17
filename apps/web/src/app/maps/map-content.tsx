@@ -34,7 +34,7 @@ export default function MapPageContent({
   initialReports?: ReportsOutput;
   initialDevices?: DevicesOutput;
 }) {
-  useMockOperationalFeed();
+  // useMockOperationalFeed(); // Disabled to stop creating case each 10 seconds
   const [category, setCategory] = useState("ALL");
   const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(
     null,
@@ -129,12 +129,14 @@ export default function MapPageContent({
           </span>
         </div>
         <IncidentMap
-          className="min-h-[540px] flex-1 lg:min-h-0 rounded-b-lg"
-          incidents={filteredIncidents}
-          onSelectIncident={setSelectedIncidentId}
-          reports={filteredReports}
-          units={devices.data ?? []}
-        />
+  className="lg:h-[600px]"
+  incidents={filteredIncidents}
+  reports={filteredReports}
+  units={devices.data ?? []}
+  onSelectIncident={(id) => {
+    setSelectedIncidentId(id);
+  }}
+/>
       </section>
 
       <aside className="min-h-0 border rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border-slate-100/60 bg-white lg:flex lg:flex-col overflow-hidden">
