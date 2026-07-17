@@ -163,12 +163,20 @@ export const reportsRouter = router({
 		)
 		.query(async ({ ctx, input }) => {
 			const limit = input?.limit ?? 20;
+
+			const user = ctx.session.user as any;
+			const regionFilter = user.role === "SUPERVISOR" && user.region ? (
+				user.supervisorLevel === "POLRES" ? { city: user.region } : 
+				user.supervisorLevel === "POLDA" ? { province: user.region } : {}
+			) : {};
+
 			const items = await ctx.db.report.findMany({
 				cursor: input?.cursor ? { id: input.cursor } : undefined,
 				orderBy: { reportedAt: "desc" },
 				skip: input?.cursor ? 1 : 0,
 				take: limit + 1,
 				where: {
+					...regionFilter,
 					...(input?.category
 						? { category: { equals: input.category, mode: "insensitive" } }
 						: {}),
@@ -258,6 +266,8 @@ export const reportsRouter = router({
 					description: scenario.description,
 					lat: scenario.lat,
 					lng: scenario.lng,
+					city: "Jakarta Pusat",
+					province: "DKI Jakarta",
 					reportedAt: new Date(),
 					reporterRef,
 				},
@@ -274,6 +284,8 @@ export const reportsRouter = router({
 					},
 					lat: scenario.lat,
 					lng: scenario.lng,
+					city: "Jakarta Pusat",
+					province: "DKI Jakarta",
 					severity: scenario.severity,
 					sources: { create: { sourceId: report.id, sourceType: "REPORT" } },
 					statusLogs: {

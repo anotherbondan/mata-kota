@@ -99,6 +99,13 @@ export const incidentsRouter = router({
 		)
 		.query(async ({ ctx, input }) => {
 			const limit = input?.limit ?? 20;
+			
+			const user = ctx.session.user as any;
+			const regionFilter = user.role === "SUPERVISOR" && user.region ? (
+				user.supervisorLevel === "POLRES" ? { city: user.region } : 
+				user.supervisorLevel === "POLDA" ? { province: user.region } : {}
+			) : {};
+
 			const items = await ctx.db.incident.findMany({
 				cursor: input?.cursor ? { id: input.cursor } : undefined,
 				include: {
@@ -110,6 +117,7 @@ export const incidentsRouter = router({
 				skip: input?.cursor ? 1 : 0,
 				take: limit + 1,
 				where: {
+					...regionFilter,
 					...(input?.category ? { category: input.category } : {}),
 					...(input?.from || input?.to
 						? {

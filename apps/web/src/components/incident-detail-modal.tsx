@@ -550,20 +550,31 @@ function IncidentDialog({ incidentId, onClose }: IncidentDialogProps) {
 										<p>Lng: {assignment.incident.lng.toFixed(5)}</p>
 									</div>
 									<div className="mt-5 flex justify-end">
-										<Button
-											disabled={
-												assignment.incident.status !== "ASSIGNED" ||
-												updateOperationalStatus.isPending
-											}
-											onClick={() =>
-												updateOperationalStatus.mutate({
-													assignmentId: assignment.id,
-													status: "EN_ROUTE",
-												})
-											}
-										>
-											<Navigation className="size-4" /> Konfirmasi Menuju Lokasi
-										</Button>
+										{assignment.incident.status === "ASSIGNED" ? (
+											<Button
+												disabled={updateOperationalStatus.isPending}
+												onClick={() =>
+													updateOperationalStatus.mutate({
+														assignmentId: assignment.id,
+														status: "EN_ROUTE",
+													})
+												}
+											>
+												<Navigation className="size-4" /> Konfirmasi Menuju Lokasi
+											</Button>
+										) : assignment.incident.status === "EN_ROUTE" ? (
+											<Button
+												disabled={updateOperationalStatus.isPending}
+												onClick={() =>
+													updateOperationalStatus.mutate({
+														assignmentId: assignment.id,
+														status: "ON_SCENE",
+													})
+												}
+											>
+												<Navigation className="size-4" /> Konfirmasi Tiba di Lokasi
+											</Button>
+										) : null}
 									</div>
 								</section>
 							))}

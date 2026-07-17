@@ -13,6 +13,11 @@ enum UserRole {
   SUPERVISOR
 }
 
+enum SupervisorLevel {
+  POLRES
+  POLDA
+}
+
 enum PersonnelStatus {
   AVAILABLE
   ASSIGNED
@@ -122,6 +127,8 @@ model Report {
   description String
   lat         Float
   lng         Float
+  city        String?
+  province    String?
   mediaUrl    String?
   reportedAt  DateTime
   evidence    Evidence[]
@@ -154,6 +161,8 @@ model Incident {
   verificationStatus VerificationStatus  @default(UNVERIFIED)
   lat                Float
   lng                Float
+  city               String?
+  province           String?
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   sources            IncidentSource[]

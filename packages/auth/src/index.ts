@@ -15,6 +15,14 @@ export function createAuth() {
 					required: true,
 					defaultValue: "OPERATOR",
 				},
+				supervisorLevel: {
+					type: "string",
+					required: false,
+				},
+				region: {
+					type: "string",
+					required: false,
+				},
 			},
 		},
 		baseURL: env.BETTER_AUTH_URL,
