@@ -110,6 +110,10 @@ export const incidentsRouter = router({
 					_count: {
 						select: { assignments: true, evidence: true, sources: true },
 					},
+					evidence: {
+						select: { id: true, url: true },
+						take: 3,
+					},
 				},
 				orderBy: { createdAt: "desc" },
 				skip: input?.cursor ? 1 : 0,

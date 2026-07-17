@@ -82,7 +82,7 @@ export default function MapPageContent({
 
   return (
     <main className="mx-auto grid w-full max-w-[1600px] gap-4 p-4 lg:h-[calc(100vh-4rem)] lg:grid-cols-[minmax(0,1fr)_360px] lg:overflow-hidden">
-      <section className="flex min-h-[620px] rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] min-w-0 flex-col border border-slate-100/60 bg-white lg:min-h-0">
+      <section className="flex flex-col h-[65vh] min-h-[500px] lg:h-full lg:min-h-0 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] min-w-0 border border-slate-100/60 bg-white">
         <div className="flex flex-col gap-3 border-slate-200 border-b p-3 sm:flex-row sm:items-center">
           <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
             <Filter className="size-4" /> Filter Peta
@@ -95,11 +95,13 @@ export default function MapPageContent({
               value={category}
             >
               <option value="ALL">Semua kategori</option>
-              {Object.entries(categoryLabels).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
+              {Object.entries(categoryLabels)
+                .sort(([a], [b]) => (a === "OTHER" ? 1 : b === "OTHER" ? -1 : 0))
+                .map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
             </select>
             <select
               aria-label="Filter tingkat keparahan"
@@ -119,9 +121,11 @@ export default function MapPageContent({
               onChange={(event) => setTimeRange(event.target.value)}
               value={timeRange}
             >
-              <option value="6">6 jam terakhir</option>
               <option value="24">24 jam terakhir</option>
-              <option value="168">7 hari terakhir</option>
+              <option value="168">1 minggu lalu</option>
+              <option value="336">2 minggu lalu</option>
+              <option value="504">3 minggu lalu</option>
+              <option value="672">4 minggu lalu</option>
             </select>
           </div>
           <span className="text-xs font-medium text-slate-500">
@@ -129,14 +133,14 @@ export default function MapPageContent({
           </span>
         </div>
         <IncidentMap
-  className="lg:h-[600px]"
-  incidents={filteredIncidents}
-  reports={filteredReports}
-  units={devices.data ?? []}
-  onSelectIncident={(id) => {
-    setSelectedIncidentId(id);
-  }}
-/>
+          className="flex-1 !h-auto !min-h-0 border-none rounded-b-3xl"
+          incidents={filteredIncidents}
+          reports={filteredReports}
+          units={devices.data ?? []}
+          onSelectIncident={(id) => {
+            setSelectedIncidentId(id);
+          }}
+        />
       </section>
 
       <aside className="min-h-0 border rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border-slate-100/60 bg-white lg:flex lg:flex-col overflow-hidden">

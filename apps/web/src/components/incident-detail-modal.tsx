@@ -29,6 +29,7 @@ import { trpc } from "@/utils/trpc";
 
 interface IncidentDetailModalProps {
 	incidentId: string | null;
+	initialView?: "assignment" | "detail" | "dispatch" | "success";
 	onClose: () => void;
 }
 
@@ -68,6 +69,7 @@ export default function IncidentDetailModal(props: IncidentDetailModalProps) {
 	return (
 		<IncidentDialog
 			incidentId={props.incidentId}
+			initialView={props.initialView}
 			key={props.incidentId}
 			onClose={props.onClose}
 		/>
@@ -76,11 +78,12 @@ export default function IncidentDetailModal(props: IncidentDetailModalProps) {
 
 interface IncidentDialogProps {
 	incidentId: string;
+	initialView?: ModalView;
 	onClose: () => void;
 }
 
 // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Coordinates the three explicit PRD workflow views and their mutation states.
-function IncidentDialog({ incidentId, onClose }: IncidentDialogProps) {
+function IncidentDialog({ incidentId, initialView, onClose }: IncidentDialogProps) {
 	const queryClient = useQueryClient();
 	const [allowBusy, setAllowBusy] = useState(false);
 	const [createdAssignments, setCreatedAssignments] = useState<
@@ -92,7 +95,7 @@ function IncidentDialog({ incidentId, onClose }: IncidentDialogProps) {
 	const [selectedPersonnelIds, setSelectedPersonnelIds] = useState<Set<string>>(
 		() => new Set()
 	);
-	const [view, setView] = useState<ModalView>("detail");
+	const [view, setView] = useState<ModalView>(initialView || "detail");
 	const deferredSearch = useDeferredValue(search.trim());
 
 	useEffect(() => {
@@ -215,7 +218,7 @@ function IncidentDialog({ incidentId, onClose }: IncidentDialogProps) {
 				role="dialog"
 			>
 				<header className="flex items-center gap-3 border-slate-200 border-b px-4 py-3 sm:px-6">
-					{view === "detail" ? null : (
+					{view === "detail" || (view === "assignment" && initialView === "assignment") ? null : (
 						<button
 							aria-label="Kembali"
 							className="grid size-9 place-items-center rounded-full text-slate-500 hover:bg-slate-100"
@@ -592,10 +595,10 @@ function IncidentDialog({ incidentId, onClose }: IncidentDialogProps) {
 							<div className="flex w-full max-w-md gap-4">
 								<button
 									className="flex-1 rounded-full bg-slate-300/80 py-3.5 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-300"
-									onClick={() => setView("detail")}
+									onClick={() => (initialView === "assignment" ? onClose() : setView("detail"))}
 									type="button"
 								>
-									Kembali
+									{initialView === "assignment" ? "Tutup" : "Kembali"}
 								</button>
 								<button
 									className="flex-1 rounded-full bg-[#1b3654] py-3.5 text-sm font-semibold text-white transition-colors hover:bg-[#13273e]"
