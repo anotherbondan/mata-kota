@@ -138,12 +138,12 @@ export default function CreateIncidentDialog({
 									className={`h-10 rounded-xl text-xs font-bold transition-all ${
 										severity === sev
 											? sev === "CRITICAL"
-												? "bg-red-600 text-white shadow-md"
+												? "bg-purple-800 text-white border-purple-800 shadow-sm"
 												: sev === "HIGH"
-													? "bg-orange-500 text-white shadow-md"
+													? "bg-red-500 text-white border-red-500 shadow-sm"
 													: sev === "MEDIUM"
-														? "bg-amber-500 text-white shadow-md"
-														: "bg-emerald-500 text-white shadow-md"
+													? "bg-amber-500 text-white border-amber-500 shadow-sm"
+													: "bg-yellow-500 text-white border-yellow-500 shadow-sm"
 											: "bg-slate-100 text-slate-600 hover:bg-slate-200"
 									}`}
 									key={sev}

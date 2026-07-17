@@ -276,13 +276,7 @@ function IncidentDialog({ incidentId, initialView, onClose }: IncidentDialogProp
 									</span>
 								)}
 								<span
-									className={`rounded-full px-3 py-1 text-xs font-semibold tracking-wide ${
-										detail.severity === "CRITICAL" || detail.severity === "HIGH"
-											? "bg-red-200 text-red-700"
-											: detail.severity === "MEDIUM"
-												? "bg-amber-100 text-amber-700"
-												: "bg-emerald-100 text-emerald-700"
-									}`}
+									className={`rounded-full px-3 py-1 text-xs font-semibold tracking-wide ${severityStyles[detail.severity]}`}
 								>
 									{severityLabels[detail.severity] ?? detail.severity}
 								</span>

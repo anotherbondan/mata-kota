@@ -7,6 +7,7 @@ import {
 	Loader2,
 	MapPin,
 	Plus,
+	RefreshCcw,
 	Search,
 	ShieldAlert,
 } from "lucide-react";
@@ -104,9 +105,9 @@ export default function ReportsContent() {
 						{simulateMutation.isPending ? (
 							<Loader2 className="size-4 animate-spin" />
 						) : (
-							<Plus className="size-4" />
+						  <RefreshCcw className="size-4" />
 						)}
-						Simulasi
+						Sinkronisasi
 					</button>
 				</div>
 			</div>

@@ -433,14 +433,14 @@ export default function IncidentMap({
             "match",
             ["get", "severity"],
             "CRITICAL",
-            "#dc2626",
+            "#6b21a8",
             "HIGH",
-            "#f97316",
+            "#ef4444",
             "MEDIUM",
-            "#eab308",
+            "#f59e0b",
             "REPORT",
             "#94a3b8",
-            "#16a34a",
+            "#eab308",
           ],
           "circle-radius": 8,
           "circle-stroke-color": "#ffffff",
@@ -795,11 +795,20 @@ export default function IncidentMap({
               <div className="mt-3 space-y-2">
                 <div className="flex items-center justify-between text-xs font-medium text-slate-600">
                   <div className="flex items-center gap-2">
-                    <span className="h-3 w-3 rounded-full bg-red-600 shadow-sm" />
+                    <span className="h-3 w-3 rounded-full bg-purple-800 shadow-sm" />
+                    <span>Risiko Kritis</span>
+                  </div>
+                  <span className="font-bold text-slate-800">
+                    {criticalCount} daerah
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs font-medium text-slate-600">
+                  <div className="flex items-center gap-2">
+                    <span className="h-3 w-3 rounded-full bg-red-500 shadow-sm" />
                     <span>Risiko Tinggi</span>
                   </div>
                   <span className="font-bold text-slate-800">
-                    {criticalCount + highCount} daerah
+                    {highCount} daerah
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-xs font-medium text-slate-600">

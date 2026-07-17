@@ -24,10 +24,10 @@ export const statusLabels: Record<string, string> = {
 };
 
 export const severityStyles: Record<string, string> = {
-	CRITICAL: "bg-red-100 text-red-700",
-	HIGH: "bg-orange-100 text-orange-700",
-	LOW: "bg-emerald-100 text-emerald-700",
-	MEDIUM: "bg-amber-100 text-amber-700",
+	CRITICAL: "bg-purple-800 text-white",
+	HIGH: "bg-red-500 text-white",
+	LOW: "bg-yellow-500 text-white",
+	MEDIUM: "bg-amber-500 text-white",
 };
 
 export function formatIncidentTime(value: Date | string) {
