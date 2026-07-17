@@ -1,6 +1,13 @@
 "use client";
 
-import { ChevronDown, ChevronUp, Flame, HelpCircle, MapPin, X } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Flame,
+  HelpCircle,
+  MapPin,
+  X,
+} from "lucide-react";
 import mapboxgl from "mapbox-gl";
 import { useEffect, useRef, useState } from "react";
 
@@ -455,7 +462,7 @@ export default function IncidentMap({
       map.addLayer({
         id: "report-labels",
         layout: {
-          "text-field": "L",
+          "text-field": "",
           "text-size": 10,
         },
         paint: { "text-color": "#ffffff" },
@@ -710,149 +717,149 @@ export default function IncidentMap({
         </button>
       </div>
 
-			{/* Legend Overlay (Bottom Right) */}
-			{!isLegendExpanded ? (
-				<button
-					aria-label="Tampilkan Legenda"
-					className="absolute bottom-4 right-4 z-10 grid size-10 place-items-center rounded-full bg-white shadow-xl transition-all hover:bg-slate-50 border border-slate-200 text-slate-600"
-					onClick={() => setIsLegendExpanded(true)}
-					type="button"
-				>
-					<HelpCircle className="size-5" />
-				</button>
-			) : (
-				<div className="absolute bottom-4 right-4 z-10 w-56 rounded-lg border border-slate-200 bg-white p-4 shadow-xl transition-all duration-300">
-					{layerMode === "heatmap" ? (
-						<>
-							<div className="mb-3 flex items-center justify-between">
-								<h3 className="text-sm font-bold text-slate-800">Skor Kerawanan</h3>
-								<div className="flex items-center gap-3">
-									<span className="text-xs font-semibold text-slate-500">
-										{incidents.length}
-									</span>
-									<button
-										className="text-slate-400 transition-colors hover:text-slate-600 outline-none"
-										onClick={() => setIsLegendExpanded(false)}
-										type="button"
-									>
-										<X className="size-4" />
-									</button>
-								</div>
-							</div>
-							<div className="mt-3 h-3 w-full bg-gradient-to-r from-yellow-400 via-orange-500 to-red-700" />
-							<div className="mt-1 flex justify-between text-[10px] font-medium text-slate-600">
-								<span>0</span>
-								<span>50</span>
-								<span>100</span>
-							</div>
-							<div className="mt-3 space-y-1.5 border-t border-slate-100 pt-3 text-xs text-slate-600">
-								<div className="flex items-center justify-between">
-									<span className="flex items-center gap-2">
-										<span className="size-2 rounded-full bg-red-700" />
-										80-100 Kritis
-									</span>
-									<span className="font-bold text-slate-800">
-										{heatmapRiskCounts.critical}
-									</span>
-								</div>
-								<div className="flex items-center justify-between">
-									<span className="flex items-center gap-2">
-										<span className="size-2 rounded-full bg-red-500" />
-										60-79 Tinggi
-									</span>
-									<span className="font-bold text-slate-800">
-										{heatmapRiskCounts.high}
-									</span>
-								</div>
-								<div className="flex items-center justify-between">
-									<span className="flex items-center gap-2">
-										<span className="size-2 rounded-full bg-orange-500" />
-										40-59 Sedang
-									</span>
-									<span className="font-bold text-slate-800">
-										{heatmapRiskCounts.medium}
-									</span>
-								</div>
-								<div className="flex items-center justify-between">
-									<span className="flex items-center gap-2">
-										<span className="size-2 rounded-full bg-yellow-400" />
-										0-39 Rendah
-									</span>
-									<span className="font-bold text-slate-800">
-										{heatmapRiskCounts.low}
-									</span>
-								</div>
-								<div className="flex items-center justify-between border-t border-slate-100 pt-2">
-									<span className="flex items-center gap-2">
-										<span className="size-2 rounded-full bg-blue-600" />
-										Unit patroli
-									</span>
-									<span className="font-bold text-slate-800">
-										{activeUnitCount}
-									</span>
-								</div>
-							</div>
-						</>
-					) : (
-						<>
-							<div className="mb-3 flex items-center justify-between">
-								<h3 className="text-sm font-bold text-slate-800">
-									Insiden Wilayah
-								</h3>
-								<button
-									className="text-slate-400 transition-colors hover:text-slate-600 outline-none"
-									onClick={() => setIsLegendExpanded(false)}
-									type="button"
-								>
-									<X className="size-4" />
-								</button>
-							</div>
-							<div className="mt-3 space-y-2">
-								<div className="flex items-center justify-between text-xs font-medium text-slate-600">
-									<div className="flex items-center gap-2">
-										<span className="h-3 w-3 rounded-full bg-red-600 shadow-sm" />
-										<span>Risiko Tinggi</span>
-									</div>
-									<span className="font-bold text-slate-800">
-										{criticalCount + highCount} daerah
-									</span>
-								</div>
-								<div className="flex items-center justify-between text-xs font-medium text-slate-600">
-									<div className="flex items-center gap-2">
-										<span className="h-3 w-3 rounded-full bg-yellow-500 shadow-sm" />
-										<span>Risiko Sedang</span>
-									</div>
-									<span className="font-bold text-slate-800">
-										{mediumCount} daerah
-									</span>
-								</div>
-								<div className="flex items-center justify-between text-xs font-medium text-slate-600">
-									<div className="flex items-center gap-2">
-										<span className="h-3 w-3 rounded-full bg-green-500 shadow-sm" />
-										<span>Risiko Rendah</span>
-									</div>
-									<span className="font-bold text-slate-800">
-										{lowCount} daerah
-									</span>
-								</div>
-							</div>
-							{layerMode === "pin" ? (
-								<div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-xs font-medium text-slate-600">
-									<div className="flex items-center gap-2">
-										<span className="grid size-4 place-items-center rounded-full bg-teal-700 text-[9px] font-bold text-white shadow-sm">
-											L
-										</span>
-										<span>Laporan</span>
-									</div>
-									<span className="font-bold text-slate-800">
-										{reports.length}
-									</span>
-								</div>
-							) : null}
-						</>
-					)}
-				</div>
-			)}
-		</div>
+      {/* Legend Overlay (Bottom Right) */}
+      {!isLegendExpanded ? (
+        <button
+          aria-label="Tampilkan Legenda"
+          className="absolute bottom-4 right-4 z-10 grid size-10 place-items-center rounded-full bg-white shadow-xl transition-all hover:bg-slate-50 border border-slate-200 text-slate-600"
+          onClick={() => setIsLegendExpanded(true)}
+          type="button"
+        >
+          <HelpCircle className="size-5" />
+        </button>
+      ) : (
+        <div className="absolute bottom-4 right-4 z-10 w-56 rounded-lg border border-slate-200 bg-white p-4 shadow-xl transition-all duration-300">
+          {layerMode === "heatmap" ? (
+            <>
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-800">
+                  Skor Kerawanan
+                </h3>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs font-semibold text-slate-500">
+                    {incidents.length}
+                  </span>
+                  <button
+                    className="text-slate-400 transition-colors hover:text-slate-600 outline-none"
+                    onClick={() => setIsLegendExpanded(false)}
+                    type="button"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </div>
+              </div>
+              <div className="mt-3 h-3 w-full bg-gradient-to-r from-yellow-400 via-orange-500 to-red-700" />
+              <div className="mt-1 flex justify-between text-[10px] font-medium text-slate-600">
+                <span>0</span>
+                <span>50</span>
+                <span>100</span>
+              </div>
+              <div className="mt-3 space-y-1.5 border-t border-slate-100 pt-3 text-xs text-slate-600">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <span className="size-2 rounded-full bg-red-700" />
+                    80-100 Kritis
+                  </span>
+                  <span className="font-bold text-slate-800">
+                    {heatmapRiskCounts.critical}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <span className="size-2 rounded-full bg-red-500" />
+                    60-79 Tinggi
+                  </span>
+                  <span className="font-bold text-slate-800">
+                    {heatmapRiskCounts.high}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <span className="size-2 rounded-full bg-orange-500" />
+                    40-59 Sedang
+                  </span>
+                  <span className="font-bold text-slate-800">
+                    {heatmapRiskCounts.medium}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <span className="size-2 rounded-full bg-yellow-400" />
+                    0-39 Rendah
+                  </span>
+                  <span className="font-bold text-slate-800">
+                    {heatmapRiskCounts.low}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between border-t border-slate-100 pt-2">
+                  <span className="flex items-center gap-2">
+                    <span className="size-2 rounded-full bg-blue-600" />
+                    Unit patroli
+                  </span>
+                  <span className="font-bold text-slate-800">
+                    {activeUnitCount}
+                  </span>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-800">
+                  Insiden Wilayah
+                </h3>
+                <button
+                  className="text-slate-400 transition-colors hover:text-slate-600 outline-none"
+                  onClick={() => setIsLegendExpanded(false)}
+                  type="button"
+                >
+                  <X className="size-4" />
+                </button>
+              </div>
+              <div className="mt-3 space-y-2">
+                <div className="flex items-center justify-between text-xs font-medium text-slate-600">
+                  <div className="flex items-center gap-2">
+                    <span className="h-3 w-3 rounded-full bg-red-600 shadow-sm" />
+                    <span>Risiko Tinggi</span>
+                  </div>
+                  <span className="font-bold text-slate-800">
+                    {criticalCount + highCount} daerah
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs font-medium text-slate-600">
+                  <div className="flex items-center gap-2">
+                    <span className="h-3 w-3 rounded-full bg-amber-500 shadow-sm" />
+                    <span>Risiko Sedang</span>
+                  </div>
+                  <span className="font-bold text-slate-800">
+                    {mediumCount} daerah
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-xs font-medium text-slate-600">
+                  <div className="flex items-center gap-2">
+                    <span className="h-3 w-3 rounded-full bg-yellow-500 shadow-sm" />
+                    <span>Risiko Rendah</span>
+                  </div>
+                  <span className="font-bold text-slate-800">
+                    {lowCount} daerah
+                  </span>
+                </div>
+              </div>
+              {layerMode === "pin" ? (
+                <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-xs font-medium text-slate-600">
+                  <div className="flex items-center gap-2">
+                    <span className="h-3 w-3 rounded-full bg-teal-700 shadow-sm" />
+                    <span>Laporan</span>
+                  </div>
+                  <span className="font-bold text-slate-800">
+                    {reports.length}
+                  </span>
+                </div>
+              ) : null}
+            </>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import { protectedProcedure, router } from "../index";
+import { operatorProcedure, protectedProcedure, router } from "../index";
 import {
 	assignmentOperationalStatusSchema,
 	idSchema,
@@ -71,7 +71,7 @@ export const assignmentsRouter = router({
 
 			return assignment;
 		}),
-	create: protectedProcedure
+	create: operatorProcedure
 		.input(
 			z
 				.object({
@@ -235,7 +235,7 @@ export const assignmentsRouter = router({
 
 			return { items, nextCursor: nextItem?.id ?? null };
 		}),
-	updateOperationalStatus: protectedProcedure
+	updateOperationalStatus: operatorProcedure
 		.input(
 			z.object({
 				assignmentId: idSchema,

@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import { protectedProcedure, router, supervisorProcedure } from "../index";
+import { operatorProcedure, protectedProcedure, router } from "../index";
 import {
 	bwcConnectionStatusSchema,
 	idSchema,
@@ -10,7 +10,7 @@ import {
 } from "../schemas";
 
 export const devicesRouter = router({
-	heartbeat: protectedProcedure
+	heartbeat: operatorProcedure
 		.input(
 			z.object({
 				deviceCode: z.string().trim().min(3).max(100),
@@ -75,7 +75,7 @@ export const devicesRouter = router({
 						: device.connectionStatus,
 			}));
 		}),
-	register: supervisorProcedure
+	register: operatorProcedure
 		.input(
 			z.object({
 				deviceCode: z.string().trim().min(3).max(100),
@@ -101,7 +101,7 @@ export const devicesRouter = router({
 			});
 			return registered;
 		}),
-	setConnectionStatus: supervisorProcedure
+	setConnectionStatus: operatorProcedure
 		.input(z.object({ id: idSchema, status: bwcConnectionStatusSchema }))
 		.mutation(async ({ ctx, input }) => {
 			const device = await ctx.db.bwcDevice.findUnique({
@@ -118,7 +118,7 @@ export const devicesRouter = router({
 			});
 			return updated;
 		}),
-	simulateMovement: protectedProcedure.mutation(async ({ ctx }) => {
+	simulateMovement: operatorProcedure.mutation(async ({ ctx }) => {
 		const devices = await ctx.db.bwcDevice.findMany({
 			select: { id: true, lastLat: true, lastLng: true },
 			where: {

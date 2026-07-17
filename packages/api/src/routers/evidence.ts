@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import { protectedProcedure, router, supervisorProcedure } from "../index";
+import { operatorProcedure, protectedProcedure, router } from "../index";
 import { evidenceTypeSchema, idSchema } from "../schemas";
 
 const evidenceInput = z
@@ -17,7 +17,7 @@ const evidenceInput = z
 	});
 
 export const evidenceRouter = router({
-	add: protectedProcedure
+	add: operatorProcedure
 		.input(evidenceInput)
 		.mutation(async ({ ctx, input }) => {
 			const [incident, sourceReport] = await Promise.all([
@@ -61,7 +61,7 @@ export const evidenceRouter = router({
 				where: { incidentId: input.incidentId },
 			})
 		),
-	remove: supervisorProcedure
+	remove: operatorProcedure
 		.input(z.object({ id: idSchema }))
 		.mutation(async ({ ctx, input }) => {
 			const evidence = await ctx.db.evidence.findUnique({

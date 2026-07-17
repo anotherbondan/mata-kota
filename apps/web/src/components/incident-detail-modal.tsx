@@ -26,6 +26,7 @@ import {
 	statusLabels,
 } from "@/lib/incident-display";
 import { trpc } from "@/utils/trpc";
+import { authClient } from "@/lib/auth-client";
 
 interface IncidentDetailModalProps {
 	incidentId: string | null;
@@ -184,8 +185,10 @@ function IncidentDialog({ incidentId, initialView, onClose }: IncidentDialogProp
 	);
 
 	const detail = incident.data;
+	const { data: session } = authClient.useSession();
+	const isOperator = (session?.user as any)?.role === "OPERATOR";
 	const canAssign =
-		detail?.status === "VERIFIED" || detail?.status === "ASSIGNED";
+		(detail?.status === "VERIFIED" || detail?.status === "ASSIGNED") && isOperator;
 	const togglePersonnel = (id: string) => {
 		setSelectedPersonnelIds((current) => {
 			const next = new Set(current);

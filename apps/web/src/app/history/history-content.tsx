@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useDeferredValue, useMemo, useState } from "react";
 
+import { authClient } from "@/lib/auth-client";
 import IncidentDetailModal from "@/components/incident-detail-modal";
 import {
   categoryLabels,
@@ -22,6 +23,8 @@ import {
 import { trpc } from "@/utils/trpc";
 
 export default function HistoryContent() {
+  const { data: session } = authClient.useSession();
+  const isOperator = (session?.user as any)?.role === "OPERATOR";
   const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(
     null,
   );
@@ -257,15 +260,17 @@ export default function HistoryContent() {
                     )}
 
                     {/* Verification Status */}
-                    <h3 className="font-bold text-slate-900 text-base mb-1">
-                      Status Verifikasi
-                    </h3>
-                    <p className="text-sm text-slate-600 mb-4">
-                      Pilih status di bawah untuk memperbarui perkembangan
-                      investigasi dan keaslian insiden di lokasi.
-                    </p>
-                    <div className="flex flex-wrap gap-3 mb-8">
-                      <button
+                    {isOperator && (
+                      <>
+                        <h3 className="font-bold text-slate-900 text-base mb-1">
+                          Status Verifikasi
+                        </h3>
+                        <p className="text-sm text-slate-600 mb-4">
+                          Pilih status di bawah untuk memperbarui perkembangan
+                          investigasi dan keaslian insiden di lokasi.
+                        </p>
+                        <div className="flex flex-wrap gap-3 mb-8">
+                          <button
                         disabled={verifyMutation.isPending}
                         onClick={() =>
                           verifyMutation.mutate({
@@ -300,12 +305,15 @@ export default function HistoryContent() {
                         className={`rounded-full px-5 py-2.5 text-sm font-semibold transition-colors ${incident.verificationStatus === "FALSE_REPORT" ? "bg-[#1b3654] text-white border border-[#1b3654]" : "bg-white text-[#1b3654] border border-slate-300 hover:bg-slate-50"}`}
                       >
                         Laporan Salah
-                      </button>
-                    </div>
+                        </button>
+                      </div>
+                      </>
+                    )}
 
                     {/* Footer Actions */}
                     <div className="flex flex-col items-end gap-6">
-                      <div className="flex flex-wrap items-center gap-3 w-full justify-end">
+                      {isOperator && (
+                        <div className="flex flex-wrap items-center gap-3 w-full justify-end">
                         <button
                           disabled={elevateMutation.isPending}
                           onClick={() => elevateMutation.mutate({ id: incident.id, isElevated: !incident.isElevated })}
@@ -320,6 +328,7 @@ export default function HistoryContent() {
                           {["ASSIGNED", "EN_ROUTE", "ON_SCENE"].includes(incident.status) ? "Lihat Penugasan" : "Tugaskan Personel"}
                         </button>
                       </div>
+                      )}
                       <button
                         className="flex items-center gap-1.5 text-sm font-semibold text-[#1b3654]"
                         onClick={() => setExpandedId(null)}

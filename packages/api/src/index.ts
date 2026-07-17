@@ -22,7 +22,7 @@ export const protectedProcedure = t.procedure.use(({ ctx, next }) => {
 	});
 });
 
-export const supervisorProcedure = protectedProcedure.use(
+export const operatorProcedure = protectedProcedure.use(
 	async ({ ctx, next }) => {
 		const currentUser = await ctx.db.user.findUnique({
 			select: {
@@ -32,10 +32,10 @@ export const supervisorProcedure = protectedProcedure.use(
 			where: { id: ctx.session.user.id },
 		});
 
-		if (currentUser?.role !== "SUPERVISOR") {
+		if (currentUser?.role !== "OPERATOR") {
 			throw new TRPCError({
 				code: "FORBIDDEN",
-				message: "Supervisor access required",
+				message: "Operator access required",
 			});
 		}
 

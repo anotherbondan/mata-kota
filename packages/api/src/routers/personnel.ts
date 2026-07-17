@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import { protectedProcedure, router, supervisorProcedure } from "../index";
+import { operatorProcedure, protectedProcedure, router } from "../index";
 import { haversineDistanceKm } from "../lib/geo";
 import { idSchema, paginationSchema, personnelStatusSchema } from "../schemas";
 
@@ -39,7 +39,7 @@ export const personnelRouter = router({
 
 			return personnel;
 		}),
-	create: supervisorProcedure
+	create: operatorProcedure
 		.input(
 			z.object({
 				badgeNo: z.string().trim().min(3).max(50),
@@ -61,7 +61,7 @@ export const personnelRouter = router({
 
 			return ctx.db.personnel.create({ data: input });
 		}),
-	delete: supervisorProcedure
+	delete: operatorProcedure
 		.input(z.object({ id: idSchema }))
 		.mutation(async ({ ctx, input }) => {
 			const personnel = await ctx.db.personnel.findUnique({
@@ -200,7 +200,7 @@ export const personnelRouter = router({
 					return left.distanceKm - right.distanceKm;
 				});
 		}),
-	update: supervisorProcedure
+	update: operatorProcedure
 		.input(
 			z.object({
 				badgeNo: z.string().trim().min(3).max(50).optional(),
@@ -224,7 +224,7 @@ export const personnelRouter = router({
 
 			return ctx.db.personnel.update({ data, where: { id } });
 		}),
-	updateStatus: supervisorProcedure
+	updateStatus: operatorProcedure
 		.input(z.object({ id: idSchema, status: personnelStatusSchema }))
 		.mutation(async ({ ctx, input }) => {
 			const personnel = await ctx.db.personnel.findUnique({
@@ -243,7 +243,7 @@ export const personnelRouter = router({
 				where: { id: personnel.id },
 			});
 		}),
-	syncExternal: supervisorProcedure
+	syncExternal: operatorProcedure
 		.input(
 			z.array(
 				z.object({
@@ -267,18 +267,18 @@ export const personnelRouter = router({
 
 			if (newOfficers.length === 0) return { count: 0 };
 
-			const created = [];
+			let count = 0;
 			for (const officer of newOfficers) {
-				const personnel = await ctx.db.personnel.create({
+				await ctx.db.personnel.create({
 					data: {
 						badgeNo: officer.badgeNo,
 						name: officer.name,
 						unitType: officer.unitType,
 					},
 				});
-				created.push(personnel);
+				count++;
 			}
 
-			return { count: created.length };
+			return { count };
 		}),
 });

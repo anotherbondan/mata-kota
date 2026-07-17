@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import { protectedProcedure, router, supervisorProcedure } from "../index";
+import { operatorProcedure, protectedProcedure, router } from "../index";
 import { canTransitionIncident } from "../lib/incident-lifecycle";
 import {
 	idSchema,
@@ -57,7 +57,7 @@ export const incidentsRouter = router({
 
 			return incident;
 		}),
-	create: protectedProcedure
+	create: operatorProcedure
 		.input(
 			z.object({
 				category: incidentCategorySchema,
@@ -140,7 +140,7 @@ export const incidentsRouter = router({
 
 			return { items, nextCursor: nextItem?.id ?? null };
 		}),
-	transitionStatus: protectedProcedure
+	transitionStatus: operatorProcedure
 		.input(
 			z.object({
 				id: idSchema,
@@ -190,7 +190,7 @@ export const incidentsRouter = router({
 			});
 			return updated;
 		}),
-	elevate: protectedProcedure
+	elevate: operatorProcedure
 		.input(
 			z.object({
 				id: idSchema,
@@ -205,7 +205,7 @@ export const incidentsRouter = router({
 			});
 			return updated;
 		}),
-	updateDetails: supervisorProcedure
+	updateDetails: operatorProcedure
 		.input(
 			z.object({
 				category: incidentCategorySchema.optional(),
@@ -237,7 +237,7 @@ export const incidentsRouter = router({
 			});
 			return updated;
 		}),
-	verify: protectedProcedure
+	verify: operatorProcedure
 		.input(
 			z.object({
 				id: idSchema,

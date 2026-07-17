@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import { protectedProcedure, router, supervisorProcedure } from "../index";
+import { operatorProcedure, protectedProcedure, router } from "../index";
 import {
 	idSchema,
 	incidentCategorySchema,
@@ -37,7 +37,7 @@ export const reportsRouter = router({
 
 			return report;
 		}),
-	convertToIncident: protectedProcedure
+	convertToIncident: operatorProcedure
 		.input(
 			z.object({
 				category: incidentCategorySchema,
@@ -106,7 +106,7 @@ export const reportsRouter = router({
 			});
 			return incident;
 		}),
-	create: protectedProcedure
+	create: operatorProcedure
 		.input(
 			z.object({
 				category: z.string().trim().min(2).max(100),
@@ -119,7 +119,7 @@ export const reportsRouter = router({
 			})
 		)
 		.mutation(({ ctx, input }) => ctx.db.report.create({ data: input })),
-	delete: supervisorProcedure
+	delete: operatorProcedure
 		.input(z.object({ id: idSchema }))
 		.mutation(({ ctx, input }) =>
 			ctx.db.$transaction(async (transaction) => {
@@ -211,7 +211,7 @@ export const reportsRouter = router({
 
 			return { items, nextCursor: nextItem?.id ?? null };
 		}),
-	simulateFeed: protectedProcedure.mutation(async ({ ctx }) => {
+	simulateFeed: operatorProcedure.mutation(async ({ ctx }) => {
 		const result = await ctx.db.$transaction(async (transaction) => {
 			const minuteBucket = Math.floor(Date.now() / 60_000);
 			const reporterRef = `MOCK-FEED-${minuteBucket}`;
