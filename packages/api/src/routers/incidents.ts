@@ -115,7 +115,7 @@ export const incidentsRouter = router({
 						take: 3,
 					},
 				},
-				orderBy: { createdAt: "desc" },
+				orderBy: [{ isElevated: "desc" }, { createdAt: "desc" }],
 				skip: input?.cursor ? 1 : 0,
 				take: limit + 1,
 				where: {
