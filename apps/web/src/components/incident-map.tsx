@@ -280,9 +280,6 @@ export default function IncidentMap({
       const heatData = incidentGeoJson(incidentsRef.current, reportsRef.current);
 
       map.addSource("incidents", {
-        cluster: true,
-        clusterMaxZoom: 14,
-        clusterRadius: 52,
         data: pinData,
         type: "geojson",
       });
@@ -394,38 +391,8 @@ export default function IncidentMap({
         type: "circle",
       });
 
-      // Cluster circles (Pin Mode)
-      map.addLayer({
-        filter: ["has", "point_count"],
-        id: "incident-clusters",
-        layout: { visibility: "visible" },
-        paint: {
-          "circle-color": "#1e293b",
-          "circle-radius": ["step", ["get", "point_count"], 18, 10, 24, 30, 30],
-          "circle-stroke-color": "#ffffff",
-          "circle-stroke-width": 2,
-        },
-        source: "incidents",
-        type: "circle",
-      });
-
-      // Cluster text (Pin Mode)
-      map.addLayer({
-        filter: ["has", "point_count"],
-        id: "incident-cluster-count",
-        layout: {
-          "text-field": "{point_count_abbreviated}",
-          "text-size": 12,
-          visibility: "visible",
-        },
-        paint: { "text-color": "#ffffff" },
-        source: "incidents",
-        type: "symbol",
-      });
-
       // Unclustered points (Pin Mode)
       map.addLayer({
-        filter: ["!", ["has", "point_count"]],
         id: "incident-points",
         layout: { visibility: "visible" },
         paint: {
@@ -451,7 +418,7 @@ export default function IncidentMap({
       });
 
       map.addLayer({
-        filter: ["all", ["!", ["has", "point_count"]], ["==", ["get", "isReport"], true]],
+        filter: ["==", ["get", "isReport"], true],
         id: "incident-report-symbol",
         layout: {
           "text-field": "-",
@@ -505,28 +472,7 @@ export default function IncidentMap({
         }
       }
     });
-    map.on("click", "incident-clusters", (event) => {
-      const feature = event.features?.[0];
-      const clusterId = feature?.properties?.cluster_id;
-      if (
-        !feature ||
-        typeof clusterId !== "number" ||
-        feature.geometry.type !== "Point"
-      ) {
-        return;
-      }
-      const coordinates = feature.geometry.coordinates as [number, number];
-      const source = map.getSource("incidents") as mapboxgl.GeoJSONSource;
-      source.getClusterExpansionZoom(clusterId, (error, zoom) => {
-        if (error || zoom === null || zoom === undefined) {
-          return;
-        }
-        map.easeTo({
-          center: coordinates,
-          zoom,
-        });
-      });
-    });
+
     map.on("mouseenter", "incident-points", () => {
       map.getCanvas().style.cursor = "pointer";
     });
@@ -574,8 +520,6 @@ export default function IncidentMap({
     const isHeatmap = layerMode === "heatmap";
     setLayerVisibility(map, "incident-heat", isHeatmap);
     setLayerVisibility(map, "incident-heat-centers", isHeatmap);
-    setLayerVisibility(map, "incident-clusters", !isHeatmap);
-    setLayerVisibility(map, "incident-cluster-count", !isHeatmap);
     setLayerVisibility(map, "incident-points", !isHeatmap);
     setLayerVisibility(map, "incident-report-symbol", !isHeatmap);
     setLayerVisibility(map, "patrol-units", true);

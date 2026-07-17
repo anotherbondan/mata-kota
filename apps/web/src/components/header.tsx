@@ -14,6 +14,7 @@ const navigation = [
 	{ href: "/reports", label: "Laporan" },
 	{ href: "/history", label: "Riwayat Insiden" },
 	{ href: "/personnel", label: "Personel" },
+	{ href: "/cctv", label: "CCTV AI" },
 ] as const;
 
 export default function Header() {
