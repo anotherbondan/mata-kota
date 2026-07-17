@@ -1,0 +1,145 @@
+# ============================================================================
+# STRSP — single source of truth untuk SEMUA hyperparameter.
+# Tiap nilai dijustifikasi inline; perubahan nilai = entri baru di DECISIONS.md.
+# ============================================================================
+
+data:
+  source_domain: data.cityofchicago.org
+  dataset_id: ijzp-q8t2            # ID kanonik Socrata "Crimes - 2001 to Present"
+  start_date: "2021-01-01"         # M2: fokus pola pasca-2021, volume terkendali
+  select:                          # kolom minimum SPEC §2 (id/case_number untuk dedup fetch)
+    - id
+    - case_number
+    - date
+    - primary_type
+    - description
+    - latitude
+    - longitude
+  page_size: 50000                 # M10: batas nyaman SODA per halaman; ~1.2jt baris = ±25 halaman
+  order_by: "date,id"              # M10: urutan stabil -> pagination deterministik & resumable
+  timeout_s: 120                   # halaman 50k baris anonim bisa lambat
+  max_retries: 5                   # backoff eksponensial utk 429/5xx/timeout
+  raw_dir: data/raw                # M6: parquet, gitignored
+  processed_dir: data/processed
+  # Sanity bbox Chicago: buang koordinat rusak (geocode 0,0 / luar kota).
+  # Anchor &chicago_bbox = satu-satunya sumber bbox (M23) — dialias di serving.
+  bbox: &chicago_bbox { lat_min: 41.60, lat_max: 42.10, lng_min: -87.95, lng_max: -87.50 }
+
+labeling:
+  min_coverage: 0.90               # gate #1 (warisan finpro)
+  lambda_t: 0.003                  # INH-3: half-life ~231 hari; catatan re-tuning di M9
+  score_min: 0
+  score_max: 100
+  unmapped_policy: exclude         # M11: baris tak ter-map dibuang (bukan skor default);
+                                   # coverage tetap diukur & di-gate — jangan cemari target diam-diam
+  # ---- Severity scoring table (INH-2, M12): (primary_type -> skor dasar 0-100) ----
+  # Prinsip: kejahatan-terhadap-orang > properti > ketertiban umum.
+  severity_table:
+    HOMICIDE: 100
+    CRIMINAL SEXUAL ASSAULT: 95
+    CRIM SEXUAL ASSAULT: 95        # varian legacy nama tipe di dataset
+    KIDNAPPING: 90
+    HUMAN TRAFFICKING: 90
+    ROBBERY: 85
+    ARSON: 80
+    WEAPONS VIOLATION: 75
+    SEX OFFENSE: 75
+    OFFENSE INVOLVING CHILDREN: 75
+    ASSAULT: 70
+    BATTERY: 70
+    BURGLARY: 65
+    DOMESTIC VIOLENCE: 65
+    MOTOR VEHICLE THEFT: 60
+    STALKING: 60
+    INTIMIDATION: 55
+    CRIMINAL DAMAGE: 45
+    THEFT: 45
+    NARCOTICS: 40
+    OTHER NARCOTIC VIOLATION: 40
+    RITUALISM: 40
+    CRIMINAL TRESPASS: 35
+    CONCEALED CARRY LICENSE VIOLATION: 35
+    DECEPTIVE PRACTICE: 30
+    INTERFERENCE WITH PUBLIC OFFICER: 30
+    PUBLIC PEACE VIOLATION: 30
+    OTHER OFFENSE: 25
+    PROSTITUTION: 25
+    LIQUOR LAW VIOLATION: 20
+    GAMBLING: 20
+    OBSCENITY: 15
+    PUBLIC INDECENCY: 15
+    NON-CRIMINAL: 5
+    NON - CRIMINAL: 5
+    NON-CRIMINAL (SUBJECT SPECIFIED): 5
+  # ---- Modifier deskripsi (additive, hasil di-clip [score_min, score_max]) ----
+  description_modifiers:
+    - { contains: "AGGRAVATED", adjust: 10 }   # eskalasi kekerasan
+    - { contains: "HANDGUN", adjust: 15 }      # keterlibatan senjata api
+    - { contains: "FIREARM", adjust: 15 }
+    - { contains: "ARMED", adjust: 10 }
+    - { contains: "ATTEMPT", adjust: -10 }     # percobaan < kejadian selesai
+    - { contains: "SIMPLE", adjust: -10 }      # varian ringan (mis. SIMPLE ASSAULT)
+
+features:
+  grid_decimals: 2                 # INH-4: ~1.1 km lat; ~0.8 km lng di lintang Chicago
+  neighbor_radius_km: 2.0          # INH-5: ~2 ring grid; spillover lokal tanpa oversmoothing
+  spatial_lambda_per_km: 1.0       # M13: bobot tetangga w = exp(-lambda_s * d_km); self = 1.0
+  hour_buckets:                    # SPEC §3 default — dikunci di sini (Open Q #2)
+    - [0, 5]
+    - [6, 11]
+    - [12, 17]
+    - [18, 23]
+  weekend_days: [5, 6]             # pandas dayofweek: 5=Sabtu, 6=Minggu
+  encode_day_of_week: false        # dow lebih halus dari kunci target (day_type) -> ditunda
+                                   # agar baris fitur tetap 1:1 dengan kunci target (lihat M14 nota)
+
+target:
+  scale_policy: p99_minmax         # M14: clip p99 lalu min-max ke 0-100; tahan outlier sel CBD
+
+cutoffs:
+  weeks_back: [0, 1, 2, 3]         # M3: C1=latest, C2=-7h, C3=-14h, C4=-21h
+
+model:                             # ---- Hands-on 2 (M16) ----
+  type: xgboost
+  params:
+    n_estimators: 300              # dataset kecil (~5.6k baris) — budget moderat cukup konvergen
+    learning_rate: 0.05            # pasangan standar 300 trees; stabil tanpa early stopping
+    max_depth: 6                   # 6 fitur numerik; interaksi grid x waktu tanpa overfit
+    min_child_weight: 5            # rem overfit pada sel grid sepi
+    subsample: 0.9                 # regularisasi ringan; deterministik dgn seed tetap
+    colsample_bytree: 0.9
+    tree_method: hist              # cepat & deterministik single-thread
+    n_jobs: 1                      # WAJIB 1: determinisme bit-exact (gate HO2 #7)
+  eval_metric: mae
+  min_improvement_over_baseline: 0.10   # gate HO2 #1
+  model_dir: data/models           # v{1..4}.json (XGBoost save_model), gitignored
+
+eval:
+  protocol: walk_forward_next_week # M17: fitur BEKU di cutoff train; target dari cutoff berikutnya
+
+continual:                         # ---- Hands-on 2 Tahap 3 ----
+  drift_metric: mean_shift_pct     # M19: |mean(t_next) - mean(t_prev)| / mean(t_prev)
+  drift_threshold: 0.10
+  registry_path: data/registry/models.jsonl   # M21: append-only, 1 entri/checkpoint
+  quality_gate: strict             # M20: MAE deployed monoton non-naik v1->v3
+  regression_tolerance: 0.0        # strict ala finpro; regresi riil = diblokir & dilaporkan
+
+serving:                           # ---- Final Tahap 4 (M22-M27) ----
+  host: 0.0.0.0
+  port: 8000                       # selaras default AI_SERVICE_URL (packages/env)
+  model_version: v4                # head produksi; gate Final #7 verifikasi vs registry
+  cache_path: data/cache/risk_batch.parquet          # M24: precompute, atomic write
+  grid_features_path: data/cache/grid_features.parquet   # lookup smoothed_grid_risk /point
+  meta_path: data/cache/risk_batch_meta.json
+  bbox_chicago: *chicago_bbox      # M23: alias anchor data.bbox — single source of truth
+  unknown_grid_smoothed_risk: 0.0  # M26: grid valid tanpa histori -> tanpa sinyal, bukan global mean
+  timezone: America/Chicago        # M27: timestamp naive = waktu lokal Chicago
+
+monitoring:                        # ---- Final Tahap 5 (M25) ----
+  log_path: data/logs/requests.jsonl
+  latency_budget_ms:
+    point: 150                     # 1x XGB predict + overhead http lokal
+    batch: 500                     # baca cache in-memory + serialisasi ~5.6k objek
+
+seed: 42                           # reproducibility; HO1 tak punya langkah stokastik,
+                                   # determinisme dijamin sorting eksplisit — seed dipakai HO2
