@@ -15,6 +15,11 @@ apps/web/src/routeTree.gen.ts
 .env
 .env*.local
 
+# AI service (STRSP)
+apps/ai/data/
+__pycache__/
+.venv/
+
 # IDEs and editors
 .vscode/*
 !.vscode/settings.json
