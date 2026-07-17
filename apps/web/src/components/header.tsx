@@ -4,8 +4,9 @@ import { Bell, Menu, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import { useNotificationStore } from "@/stores/use-notification-store";
 import UserMenu from "./user-menu";
 
 const navigation = [
@@ -20,6 +21,11 @@ const navigation = [
 export default function Header() {
 	const pathname = usePathname();
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
+	const [mounted, setMounted] = useState(false);
+	
+	const unreadCount = useNotificationStore((state) => state.unreadCount());
+
+	useEffect(() => setMounted(true), []);
 
 	if (pathname === "/login") {
 		return null;
@@ -62,14 +68,20 @@ export default function Header() {
 				</nav>
 
 				<div className="ml-auto flex items-center gap-3 sm:gap-5">
-					<button
+					<Link
+						href={"/notifications" as any}
 						aria-label="Buka notifikasi"
-						className="grid size-10 place-items-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-900 active:scale-95 transition-all shadow-sm border border-transparent hover:border-slate-200"
+						className="relative grid size-10 place-items-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-900 active:scale-95 transition-all shadow-sm border border-transparent hover:border-slate-200"
 						title="Notifikasi"
-						type="button"
 					>
 						<Bell className="size-5" />
-					</button>
+						{mounted && unreadCount > 0 && (
+							<span className="absolute top-1.5 right-1.5 flex h-3 w-3">
+								<span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+								<span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 border border-white"></span>
+							</span>
+						)}
+					</Link>
 					<div className="hidden sm:block">
 						<UserMenu />
 					</div>
@@ -99,7 +111,7 @@ export default function Header() {
 										? "bg-primary-50 text-primary-600"
 										: "text-slate-600 hover:bg-slate-50"
 								}`}
-								href={item.href}
+								href={item.href as any}
 								key={item.href}
 								onClick={() => setIsMenuOpen(false)}
 							>

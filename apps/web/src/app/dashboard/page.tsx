@@ -287,17 +287,25 @@ export default function DashboardPage() {
 										</td>
 										<td className="px-4 py-4 text-slate-600">{responseTime}</td>
 										<td className="px-4 py-4 text-right">
-											{!assignment.resolvedAt && (
+											{assignment.resolvedAt ? (
+												<span className="text-xs font-semibold text-slate-400">Tugas Selesai</span>
+											) : (
 												<button
 													type="button"
 													disabled={updateStatus.isPending}
 													onClick={() => {
-														const nextStatus = assignment.incident.status === "ON_SCENE" ? "RESOLVED" : "ON_SCENE";
+														let nextStatus: "EN_ROUTE" | "ON_SCENE" | "RESOLVED" = "EN_ROUTE";
+														if (assignment.incident.status === "EN_ROUTE") nextStatus = "ON_SCENE";
+														if (assignment.incident.status === "ON_SCENE") nextStatus = "RESOLVED";
 														updateStatus.mutate({ assignmentId: assignment.id, status: nextStatus });
 													}}
-													className="rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-600 hover:bg-emerald-100 disabled:opacity-50 transition-colors"
+													className="rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-600 hover:bg-emerald-100 disabled:opacity-50 transition-colors whitespace-nowrap"
 												>
-													{assignment.incident.status === "ON_SCENE" ? "Selesaikan" : "Konfirmasi Tiba"}
+													{assignment.incident.status === "ASSIGNED" || assignment.incident.status === "VERIFIED"
+														? "Konfirmasi Berangkat"
+														: assignment.incident.status === "EN_ROUTE"
+														? "Konfirmasi Tiba"
+														: "Selesaikan"}
 												</button>
 											)}
 										</td>
