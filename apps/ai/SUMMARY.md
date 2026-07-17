@@ -29,10 +29,11 @@ Socrata (fetch resumable) → parquet raw
 | Drift antar-checkpoint (mean-shift) | 0,20% / 0,08% / 0,01% — tak ada trigger (threshold 10%) |
 | Quality gate strict (tol 0.0) | **v3 DIBLOKIR** (MAE +0,86% vs v2) — bukti mekanisme bekerja |
 | Latency serving (lokal, p95) | point **≈10 ms** (budget 150) · batch **≈53 ms** (budget 500) |
-| Acceptance tests | **31 hijau** (HO1: 9 · HO2: 11 · Final: 11) — contract-first, skip→pass |
+| Acceptance tests | **36 hijau** (HO1: 9 · HO2: 11 · Final: 16) — contract-first, skip→pass |
 
 **Serving:** `GET /risk-score/batch` = lookup precomputed (5.619 sel; demo tak bergantung
-Socrata/training live; cache-fallback terstruktur). `GET /risk-score/point` = inferensi
+Socrata/training live; cache-fallback terstruktur; **4 snapshot temporal** via `?version=`:
+current/last_week/last_month/6_months_ago — mean|Δrisk| current↔6mo = 1,66, ↔1mgg = 0,62). `GET /risk-score/point` = inferensi
 live v4 satu titik (validasi bbox Chicago, 422 di luar). Monitoring JSONL +
 `/metrics/summary`. Model = entri deployed terbaru registry, dimuat sekali saat startup.
 

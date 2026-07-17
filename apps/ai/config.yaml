@@ -134,6 +134,11 @@ serving:                           # ---- Final Tahap 4 (M22-M27) ----
   bbox_chicago: *chicago_bbox      # M23: alias anchor data.bbox — single source of truth
   unknown_grid_smoothed_risk: 0.0  # M26: grid valid tanpa histori -> tanpa sinyal, bukan global mean
   timezone: America/Chicago        # M27: timestamp naive = waktu lokal Chicago
+  batch_versions:                  # M28: 4 snapshot temporal; T = latest - days_back
+    - { name: current, days_back: 0 }        # file: cache_path (kontrak lama utuh)
+    - { name: last_week, days_back: 7 }      # file: risk_batch_last_week.parquet
+    - { name: last_month, days_back: 30 }    # 30 hari tetap (bukan bulan kalender)
+    - { name: 6_months_ago, days_back: 182 } # 182 hari tetap
 
 monitoring:                        # ---- Final Tahap 5 (M25) ----
   log_path: data/logs/requests.jsonl

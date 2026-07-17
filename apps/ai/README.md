@@ -9,7 +9,7 @@ konteks waktu (hour_bucket × day_type) dari data historis kejahatan Chicago (So
 - **Hyperparameter:** `config.yaml` — single source of truth.
 - **Ringkasan 1 halaman utk judging:** [`SUMMARY.md`](./SUMMARY.md).
 
-> Status: **SELESAI** (2026-07-17) — 31 acceptance test hijau (HO1: 9, HO2: 11, Final: 11).
+> Status: **SELESAI** (2026-07-17) — 36 acceptance test hijau (HO1: 9, HO2: 11, Final: 16).
 > Model produksi: **v4** (4-model rolling weekly, quality-gated).
 
 ---
@@ -44,13 +44,14 @@ python -m strsp.features.dataset --all-cutoffs  # → data/processed/dataset_C{1
 python -m strsp.continual.pipeline              # → data/models/v{1..4}.json + data/registry/models.jsonl
 
 # Tahap 4 — precompute lookup table serving (SEKALI sebelum demo; demo resilience)
-python -m strsp.serving.precompute              # → data/cache/risk_batch.parquet (5.619 sel)
+python -m strsp.serving.precompute              # → data/cache/risk_batch{,_last_week,_last_month,_6_months_ago}.parquet
+                                                #   4 snapshot temporal (M28), semua dari model v4
 
 # Serve through Turbo
 pnpm run dev:ai
 ```
 
-Semua artefak `data/` di-gitignore. Acceptance gates: `pytest -v` (31 test, wajib hijau).
+Semua artefak `data/` di-gitignore. Acceptance gates: `pytest -v` (36 test, wajib hijau).
 
 ## Endpoint (contoh request/response NYATA)
 
@@ -62,6 +63,10 @@ curl "http://localhost:8000/risk-score/batch?hour_bucket=18-23&day_type=weekend"
 # 200 → 690 sel; item: {"grid_lat":41.64,"grid_lng":-87.6,"risk_score":0.0,
 #                       "hour_bucket":"18-23","day_type":"weekend"}
 # Tanpa filter → 5.619 sel (semua kombinasi grid × 4 bucket × 2 day_type yang berdata).
+
+curl "http://localhost:8000/risk-score/batch?version=6_months_ago&hour_bucket=18-23&day_type=weekend"
+# Snapshot temporal (M28): version = current|last_week|last_month|6_months_ago
+# (default current; 6_months_ago = 5.609 sel — grid muda belum ada di snapshot lama).
 
 curl "http://localhost:8000/risk-score/point?lat=41.881&lng=-87.629&timestamp=2026-07-18T21:30:00"
 # 200 → {"grid_lat":41.88,"grid_lng":-87.63,"risk_score":86.85202026367188,
@@ -92,7 +97,7 @@ apps/ai/
 │   ├── modeling/       # XGBoost train + eval walk-forward next-week
 │   ├── continual/      # drift, registry .jsonl, quality gate, pipeline v1→v4
 │   └── serving/        # schemas, model_store, precompute, cache, monitoring
-└── tests/              # 31 acceptance tests / 21 gate (pytest)
+└── tests/              # 36 acceptance tests / 22 gate (pytest)
 ```
 
 ## Titik integrasi ke Matakota

@@ -124,6 +124,9 @@ def health(request: Request) -> dict:
         "cache_freshness": (
             state.risk_cache.freshness() if hasattr(state, "risk_cache") else None
         ),
+        "cache_versions": (
+            state.risk_cache.versions_info() if hasattr(state, "risk_cache") else []
+        ),
     }
 
 
@@ -161,17 +164,32 @@ def _bucket_labels(config: dict) -> list[str]:
 
 @app.get("/risk-score/batch", response_model=list[RiskCell])
 def risk_score_batch(
-    request: Request, hour_bucket: str | None = None, day_type: str | None = None
+    request: Request,
+    hour_bucket: str | None = None,
+    day_type: str | None = None,
+    version: str | None = None,
 ):
-    """Heatmap lookup: precomputed offline (M22) — hanya membaca cache, tanpa inferensi."""
+    """Heatmap lookup: precomputed offline (M22) — hanya membaca cache, tanpa inferensi.
+
+    `version` (M28): current | last_week | last_month | 6_months_ago (default current).
+    """
     state = request.app.state
     config = state.config
-    cells = state.risk_cache.cells()
+
+    valid_versions = [v["name"] for v in config["serving"]["batch_versions"]]
+    version_name = version or "current"
+    if version_name not in valid_versions:
+        raise HTTPException(
+            status_code=422,
+            detail=f"version tidak dikenal: {version_name!r}; pilihan: {valid_versions}",
+        )
+
+    cells = state.risk_cache.cells(version_name)
     if cells is None:
         raise HTTPException(
             status_code=503,
             detail=(
-                "cache risk batch belum tersedia — jalankan "
+                f"cache risk batch versi {version_name!r} belum tersedia — jalankan "
                 "`python -m strsp.serving.precompute` lalu restart service"
             ),
         )
