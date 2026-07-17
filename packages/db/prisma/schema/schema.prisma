@@ -273,3 +273,16 @@ model BwcTrainingClip {
   @@index([recordedAt])
   @@map("bwc_training_clips")
 }
+
+model RiskPrediction {
+  id         String @id @default(cuid())
+  version    String
+  dayType    String
+  hourBucket String
+  gridLat    Float
+  gridLng    Float
+  riskScore  Float
+
+  @@index([version, dayType, hourBucket])
+  @@map("risk_predictions")
+}

@@ -138,7 +138,24 @@ export const dashboardRouter = router({
 	}),
 	riskGrid: protectedProcedure
 		.input(riskGridInputSchema)
-		.query(({ input }) => getRiskGrid(input)),
+		.query(async ({ ctx, input }) => {
+			const version = input.version || "current";
+			const where: any = { version };
+			if (input.dayType) {
+				where.dayType = input.dayType;
+			}
+			if (input.hourBucket) {
+				where.hourBucket = input.hourBucket;
+			}
+
+			const predictions = await ctx.db.riskPrediction.findMany({ where });
+
+			return predictions.map((p) => ({
+				grid_lat: p.gridLat,
+				grid_lng: p.gridLng,
+				risk_score: p.riskScore,
+			}));
+		}),
 	trend: protectedProcedure
 		.input(
 			z.object({ days: z.number().int().min(1).max(31).default(7) }).optional()

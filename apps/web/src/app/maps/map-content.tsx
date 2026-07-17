@@ -40,7 +40,7 @@ export default function MapPageContent({
     null,
   );
   const [severity, setSeverity] = useState("ALL");
-  const [timeRange, setTimeRange] = useState("24");
+  const [timeRange, setTimeRange] = useState("current");
   const incidents = useQuery({
     ...trpc.dashboard.incidentMap.queryOptions({ activeOnly: false }),
     initialData: initialIncidents,
@@ -60,9 +60,20 @@ export default function MapPageContent({
     initialData: initialDevices,
     refetchInterval: POLLING_INTERVAL,
   });
+  
+  const riskGrid = useQuery({
+    ...trpc.dashboard.riskGrid.queryOptions({ 
+      version: timeRange as "current" | "last_week" | "last_month" | "6_months_ago"
+    }),
+    refetchInterval: POLLING_INTERVAL,
+  });
 
   const filteredIncidents = useMemo(() => {
-    const minimumTime = Date.now() - Number(timeRange) * 60 * 60 * 1000;
+    let hours = 24;
+    if (timeRange === "last_week") hours = 168;
+    if (timeRange === "last_month") hours = 720;
+    if (timeRange === "6_months_ago") hours = 4320;
+    const minimumTime = Date.now() - hours * 60 * 60 * 1000;
     return (incidents.data ?? []).filter(
       (incident) =>
         (category === "ALL" || incident.category === category) &&
@@ -72,7 +83,11 @@ export default function MapPageContent({
   }, [category, incidents.data, severity, timeRange]);
 
   const filteredReports = useMemo(() => {
-    const minimumTime = Date.now() - Number(timeRange) * 60 * 60 * 1000;
+    let hours = 24;
+    if (timeRange === "last_week") hours = 168;
+    if (timeRange === "last_month") hours = 720;
+    if (timeRange === "6_months_ago") hours = 4320;
+    const minimumTime = Date.now() - hours * 60 * 60 * 1000;
     return (reports.data ?? []).filter(
       (report) =>
         (category === "ALL" || report.category === category) &&
@@ -121,22 +136,33 @@ export default function MapPageContent({
               onChange={(event) => setTimeRange(event.target.value)}
               value={timeRange}
             >
-              <option value="24">24 jam terakhir</option>
-              <option value="168">1 minggu lalu</option>
-              <option value="336">2 minggu lalu</option>
-              <option value="504">3 minggu lalu</option>
-              <option value="672">4 minggu lalu</option>
+              <option value="current">24 jam terakhir</option>
+              <option value="last_week">1 minggu lalu</option>
+              <option value="last_month">1 bulan lalu</option>
+              <option value="6_months_ago">6 bulan lalu</option>
             </select>
           </div>
           <span className="text-xs font-medium text-slate-500">
-            {filteredIncidents.length} insiden / {filteredReports.length} laporan
+            {filteredIncidents.length + (riskGrid.data?.length ?? 0)} insiden / {filteredReports.length} laporan
           </span>
         </div>
         <IncidentMap
           className="flex-1 !h-auto !min-h-0 border-none rounded-b-3xl"
-          incidents={filteredIncidents}
+          incidents={[
+            ...filteredIncidents,
+            ...(riskGrid.data ?? []).map((cell, i) => ({
+              id: `ai-pred-${i}-${cell.grid_lat}-${cell.grid_lng}`,
+              lat: cell.grid_lat,
+              lng: cell.grid_lng,
+              category: "OTHER",
+              severity: cell.risk_score >= 85 ? "CRITICAL" : cell.risk_score >= 65 ? "HIGH" : cell.risk_score >= 40 ? "MEDIUM" : "LOW",
+              status: "REPORTED",
+              heatmapScore: cell.risk_score
+            }))
+          ]}
           reports={filteredReports}
           units={devices.data ?? []}
+          riskGrid={riskGrid.data ?? []}
           onSelectIncident={(id) => {
             setSelectedIncidentId(id);
           }}

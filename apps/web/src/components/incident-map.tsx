@@ -23,6 +23,12 @@ export interface IncidentMapItem {
   status: string;
 }
 
+export interface RiskCellItem {
+  grid_lat: number;
+  grid_lng: number;
+  risk_score: number;
+}
+
 export interface UnitMapItem {
   effectiveStatus: string;
   id: string;
@@ -47,6 +53,7 @@ interface IncidentMapProps {
   onSelectIncident: (id: string) => void;
   reports?: ReportMapItem[];
   units?: UnitMapItem[];
+  riskGrid?: RiskCellItem[];
 }
 
 const EMPTY_REPORTS: ReportMapItem[] = [];
@@ -179,6 +186,7 @@ export default function IncidentMap({
   onSelectIncident,
   reports = EMPTY_REPORTS,
   units = EMPTY_UNITS,
+  riskGrid,
 }: IncidentMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const incidentsRef = useRef(incidents);
@@ -531,7 +539,18 @@ export default function IncidentMap({
     }
     const map = mapRef.current;
     const pinData = incidentGeoJson(incidents, reports);
-    const heatData = incidentGeoJson(incidents, reports);
+    
+    const heatData = riskGrid && riskGrid.length > 0
+      ? {
+          type: "FeatureCollection" as const,
+          features: riskGrid.map((cell) => ({
+            type: "Feature" as const,
+            geometry: { type: "Point" as const, coordinates: [cell.grid_lng, cell.grid_lat] },
+            properties: { heatmapScore: cell.risk_score }
+          }))
+        }
+      : incidentGeoJson(incidents, reports);
+
     (
       map?.getSource("incidents") as mapboxgl.GeoJSONSource | undefined
     )?.setData(pinData);
@@ -539,11 +558,11 @@ export default function IncidentMap({
       map?.getSource("incident-heat-source") as
         | mapboxgl.GeoJSONSource
         | undefined
-    )?.setData(heatData);
+    )?.setData(heatData as any);
     (map?.getSource("units") as mapboxgl.GeoJSONSource | undefined)?.setData(
       unitGeoJson(units),
     );
-  }, [incidents, isReady, reports, units]);
+  }, [incidents, isReady, reports, units, riskGrid]);
 
   return (
     <div

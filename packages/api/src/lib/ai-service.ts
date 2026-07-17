@@ -26,6 +26,7 @@ export const riskGridInputSchema = z
 	.object({
 		dayType: z.enum(["weekday", "weekend"]).optional(),
 		hourBucket: z.string().min(1).max(16).optional(),
+		version: z.enum(["current", "last_week", "last_month", "6_months_ago"]).optional(),
 	})
 	.optional()
 	.default({});
@@ -105,6 +106,9 @@ export function getRiskGrid(input: z.infer<typeof riskGridInputSchema>) {
 	}
 	if (input.hourBucket) {
 		searchParams.set("hour_bucket", input.hourBucket);
+	}
+	if (input.version) {
+		searchParams.set("version", input.version);
 	}
 	const query = searchParams.size > 0 ? `?${searchParams.toString()}` : "";
 
